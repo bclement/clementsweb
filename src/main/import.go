@@ -12,6 +12,7 @@ import (
 
 var dbfile = flag.String("dbfile", "data.db", "database file")
 var create = flag.Bool("create", false, "create db file if it doesn't exist")
+var overwrite = flag.Bool("overwrite", false, "replace contents of bucket instead of append")
 var datafile = flag.String("datafile", "", "JSON encoded data for import")
 
 type Batch struct {
@@ -46,9 +47,20 @@ func main() {
 	}
 
 	db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(updates.Bucket))
-		if err != nil {
-			return err
+		var err error
+		bucket := tx.Bucket([]byte(updates.Bucket))
+		if *overwrite && bucket != nil {
+			err = tx.DeleteBucket([]byte(updates.Bucket))
+			if err != nil {
+				return err
+			}
+			bucket = nil
+		}
+		if bucket == nil {
+			bucket, err = tx.CreateBucketIfNotExists([]byte(updates.Bucket))
+			if err != nil {
+				return err
+			}
 		}
 		for key, value := range updates.Entries {
 			encoded, err := json.Marshal(value)

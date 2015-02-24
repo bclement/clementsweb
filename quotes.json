@@ -1,0 +1,69 @@
+{
+    "Bucket" : "quotes",
+    "Entries" : {
+        "000" : {
+            "quote" : "There are two ways of constructing a software design: One way is to make it so simple that there are obviously no deficiencies and the other way is to make it so complicated that there are no obvious deficiencies.",
+            "source" : "C.A.R. Hoare"
+        },
+        "001" : {
+            "quote" : "The computing scientist’s main challenge is not to get confused by the complexities of his own making.",
+            "source" : "E. W. Dijkstra"
+        },
+        "002" : {
+            "quote" : "One of my most productive days was throwing away 1000 lines of code.",
+            "source" : "Ken Thompson"
+        },
+        "003" : {
+            "quote" : "Deleted code is debugged code.",
+            "source" : "Jeff Sickel"
+        },
+        "004" : {
+            "quote" : "Controlling complexity is the essence of computer programming.",
+            "source" : "Brian Kerninghan"
+        },
+        "005" : {
+            "quote" : "Measuring programming progress by lines of code is like measuring aircraft building progress by weight.",
+            "source" : "Bill Gates"
+        },
+        "006" : {
+            "quote" : "If debugging is the process of removing software bugs, then programming must be the process of putting them in.",
+            "source" : "E. W. Dijkstra"
+        },
+        "007" : {
+            "quote" : "Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.",
+            "source" : "Brian Kerninghan"
+        },
+        "008" : {
+            "quote" : "Walking on water and developing software from a specification are easy if both are frozen.",
+            "source" : "Edward Bernard"
+        },
+        "009" : {
+            "quote" : "There is not now, nor has there ever been, nor will there ever be, any programming language in which it is the least bit difficult to write bad code.",
+            "source" : "Flon's Law"
+        },
+        "010" : {
+            "quote" : "Any code of your own that you haven't looked at for six or more months might as well have been written by someone else.",
+            "source" : "Eagleson's Law"
+        },
+        "011" : {
+            "quote" : "C is quirky, flawed, and an enormous success.",
+            "source" : "Dennis Ritchie"
+        },
+        "012" : {
+            "quote" : "It always takes longer than you expect, even when you take into account Hofstadter's Law.",
+            "source" : "Hofstadter's Law"
+        },
+        "013" : {
+            "quote" : "There are only two kinds of languages: the ones people complain about and the ones nobody uses.",
+            "source" : "Bjarne Stroustrup"
+        },
+        "014" : {
+            "quote" : "Software is hard.",
+            "source" : "Donald Knuth"
+        },
+        "015" : {
+            "quote" : "There are only two hard things in Computer Science: cache invalidation and naming things.",
+            "source" : "Phil Karlton"
+        }
+    }
+}
