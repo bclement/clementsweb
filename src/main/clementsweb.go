@@ -22,6 +22,7 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
+
 func handleStatic(w http.ResponseWriter, r *http.Request) *handler.AppError {
 	vars := mux.Vars(r)
 	prepath := vars["prepath"]
@@ -75,10 +76,12 @@ func main() {
     homeTemplate := createTemplate(*webroot, "home.html")
 
     homeHandler := handler.Home(db, homeTemplate)
+    staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
 
 	r := mux.NewRouter()
-	r.Handle("/", handler.HandlerWrapper{homeHandler})
-	r.Handle("/{prepath:.*}/static/{postpath:.*}", handler.WrapHandler(handleStatic))
+	r.Handle("/", homeHandler)
+	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
+    handler.RegisterAuth(db, r, "http://clementscode.com")
 
 	if *standalone != "" { // run as standalone webapp
 		err = http.ListenAndServe(*standalone, r)

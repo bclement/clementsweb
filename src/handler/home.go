@@ -13,8 +13,8 @@ type HomeHandler struct {
     db *bolt.DB
 }
 
-func Home(db *bolt.DB, t *template.Template) *HomeHandler {
-    return &HomeHandler{t, db}
+func Home(db *bolt.DB, t *template.Template) *Wrapper {
+    return &Wrapper{HomeHandler{t, db}}
 }
 
 type Quote struct {
@@ -22,7 +22,7 @@ type Quote struct {
 	Source string
 }
 
-func (h *HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
+func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	var q Quote
 	/* TODO rotate quotes */
 	err := h.db.View(func(tx *bolt.Tx) error {
