@@ -5,8 +5,15 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"html/template"
+    "math/rand"
 	"net/http"
+    "strconv"
+    "time"
 )
+
+func init() {
+    rand.Seed(time.Now().UTC().UnixNano())
+}
 
 type HomeHandler struct {
     template *template.Template
@@ -27,14 +34,32 @@ type PageData struct {
     Quote *Quote
 }
 
-func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
-    login := getLoginInfo(r)
-	var q Quote
-	/* TODO rotate quotes */
-	err := h.db.View(func(tx *bolt.Tx) error {
+func getRandomKey(lastKey string) (string, bool) {
+    index, err := strconv.Atoi(lastKey)
+    if err != nil || index < 0 {
+        return "", false
+    }
+    /* +1 to include last index in possible results */
+    randIndex := rand.Intn(index + 1)
+    keylen := len(lastKey)
+    formatStr := fmt.Sprintf("%%0%dd", keylen)
+    return fmt.Sprintf(formatStr, randIndex), true
+}
+
+func getRandomQuote(db *bolt.DB) (*Quote, *AppError) {
+    var q Quote
+    err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("quotes"))
 		if b != nil {
-			encoded := b.Get([]byte("000"))
+            c := b.Cursor()
+            key, encoded := c.Last()
+            index, ok := getRandomKey(string(key))
+            if ok {
+                key, randomValue := c.Seek([]byte(index))
+                if key != nil {
+                    encoded = randomValue
+                }
+            }
 			if encoded != nil {
 				err := json.Unmarshal(encoded, &q)
 				if err != nil {
@@ -47,13 +72,22 @@ func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	})
 	if err != nil {
         err = fmt.Errorf("Unable to get quote from db: %v", err)
-        return &AppError{err, "Internal Server Error", http.StatusInternalServerError}
+        return nil, &AppError{err, "Internal Server Error", http.StatusInternalServerError}
+	}
+    return &q, nil
+}
+
+func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
+    login := getLoginInfo(r)
+    quote, appErr := getRandomQuote(h.db)
+	if appErr != nil {
+        return appErr
 	}
 
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	h.template.Execute(w, PageData{login, &q})
+	h.template.Execute(w, PageData{login, quote})
     return nil
 }
 
