@@ -32,7 +32,12 @@
 						<li><a href="/">Home</a></li>
 						<li><a href="generic.html">Projects</a></li>
 						<li><a href="elements.html">Resume</a></li>
-						<li><a href="#" class="button special">Sign In</a></li>
+                        {{ if .Login.Authenticated }}
+                        <li>Logged in as {{ .Login.Email }}</li>
+						<li><a href="/auth/logout" class="button special">Log Out</a></li>
+                        {{ else }}
+						<li><a href="/auth/google/login" class="button special">Log In</a></li>
+                        {{ end }}
 					</ul>
 				</nav>
 			</header>
@@ -50,8 +55,8 @@
 			<section id="one" class="wrapper style1 special">
 				<div class="container">
 					<header class="major">
-                        <h3>"{{.Quote}}"</h3>
-                        <p>-{{.Source}}</p>
+                        <h3>"{{.Quote.Quote}}"</h3>
+                        <p>-{{.Quote.Source}}</p>
 					</header>
 					<div class="row 150%">
 						<div class="4u 12u$(medium)">

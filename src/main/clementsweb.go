@@ -17,6 +17,7 @@ import (
 
 var standalone = flag.String("standalone", "", "binding for standalone app, example 0.0.0.0:8080")
 var webroot = flag.String("webroot", "./", "root of web resource directory")
+var auth = flag.Bool("auth", true, "use OAuth for login")
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -81,15 +82,15 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
-    handler.RegisterAuth(db, r, "http://clementscode.com")
+    handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 
 	if *standalone != "" { // run as standalone webapp
 		err = http.ListenAndServe(*standalone, r)
 	} else { // run in webserver via fcgi
-		logfile := setupLog(*webroot)
-		defer logfile.Close()
 		// nil to signify standard io
 		err = fcgi.Serve(nil, r)
+		logfile := setupLog(*webroot)
+		defer logfile.Close()
 	}
 	if err != nil {
 		log.Fatal(err)

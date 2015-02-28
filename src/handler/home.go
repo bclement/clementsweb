@@ -22,7 +22,13 @@ type Quote struct {
 	Source string
 }
 
+type PageData struct {
+    Login *LoginInfo
+    Quote *Quote
+}
+
 func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
+    login := getLoginInfo(r)
 	var q Quote
 	/* TODO rotate quotes */
 	err := h.db.View(func(tx *bolt.Tx) error {
@@ -47,7 +53,7 @@ func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	h.template.Execute(w, q)
+	h.template.Execute(w, PageData{login, &q})
     return nil
 }
 
