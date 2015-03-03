@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"html/template"
     "io"
     "log"
     "mime"
@@ -39,6 +40,24 @@ func (hw Wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         }
         http.Error(w, appErr.Message, appErr.Code)
     }
+}
+
+type PageData struct {
+    Login *LoginInfo
+}
+
+type GenericHandler struct {
+    Template *template.Template
+}
+
+func (h GenericHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
+    login := getLoginInfo(r)
+
+	headers := w.Header()
+	headers.Add("Content-Type", "text/html")
+
+	h.Template.Execute(w, PageData{login})
+    return nil
 }
 
 /* copies file denoted by fname to response */

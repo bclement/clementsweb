@@ -75,12 +75,15 @@ func main() {
 	defer db.Close()
 
     homeTemplate := createTemplate(*webroot, "home.html")
+    resumeTemplate := createTemplate(*webroot, "resume.html")
 
     homeHandler := handler.Home(db, homeTemplate)
     staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
+    resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
+    r.Handle("/resume", resumeHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
     handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 

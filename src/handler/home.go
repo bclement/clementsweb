@@ -29,7 +29,7 @@ type Quote struct {
 	Source string
 }
 
-type PageData struct {
+type HomePageData struct {
     Login *LoginInfo
     Quote *Quote
 }
@@ -87,7 +87,7 @@ func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	h.template.Execute(w, PageData{login, quote})
+	h.template.Execute(w, HomePageData{login, quote})
     return nil
 }
 
