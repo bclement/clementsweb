@@ -54,11 +54,14 @@ func openDatabase(dbdir string) *bolt.DB {
 	return db
 }
 
-func createTemplate(webroot string, templateFile string) *template.Template {
-	fname := webroot + "templates/" + templateFile
-	rval, err := template.ParseFiles(fname)
+func createTemplate(webroot string, filenames ...string) *template.Template {
+    files := make([]string, len(filenames))
+    for i, f := range filenames {
+        files[i] = webroot + "templates/" + f
+    }
+	rval, err := template.ParseFiles(files...)
 	if err != nil {
-		log.Fatal(err)
+        log.Fatalf("Unable to parse files: %v. %v", files, err)
 	}
 	return rval
 }
@@ -74,8 +77,8 @@ func main() {
     db := openDatabase(*webroot)
 	defer db.Close()
 
-    homeTemplate := createTemplate(*webroot, "home.html")
-    resumeTemplate := createTemplate(*webroot, "resume.html")
+    homeTemplate := createTemplate(*webroot, "base.html", "home.template")
+    resumeTemplate := createTemplate(*webroot, "base.html", "resume.template")
 
     homeHandler := handler.Home(db, homeTemplate)
     staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}

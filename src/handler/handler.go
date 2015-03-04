@@ -42,10 +42,6 @@ func (hw Wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-type PageData struct {
-    Login *LoginInfo
-}
-
 type GenericHandler struct {
     Template *template.Template
 }
@@ -56,7 +52,9 @@ func (h GenericHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	h.Template.Execute(w, PageData{login})
+    pageData := map[string]interface{}{"Login":login}
+
+	h.Template.Execute(w, pageData)
     return nil
 }
 

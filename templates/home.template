@@ -1,0 +1,46 @@
+{{ define "title" }}<title>clementscode</title>{{ end }}
+{{ define "body-class" }}class="landing"{{ end }}
+
+{{ define "content" }}
+		<!-- Banner -->
+			<section id="banner">
+				<h2>Hi.</h2>
+				<p>Brian Clements is a programmer living in Omaha,
+                NE.<br/>
+                This website serves as a platform for web-based projects
+                and shameless self promotion.</p>
+			</section>
+
+		<!-- One -->
+			<section id="one" class="wrapper style1 special">
+				<div class="container">
+					<header class="major">
+                        <h3>"{{.Quote.Quote}}"</h3>
+                        <p>-{{.Quote.Source}}</p>
+					</header>
+					<div class="row 150%">
+						<div class="4u 12u$(medium)">
+							<section class="box">
+								<i class="icon big rounded color1 fa-rocket"></i>
+								<h3>Projects</h3>
+								<p>Spare time killers.</p>
+							</section>
+						</div>
+						<div class="4u 12u$(medium)">
+							<section class="box">
+								<i class="icon big rounded color9 fa-envelope"></i>
+								<h3>Email</h3>
+								<p>If you want to contact me.</p>
+							</section>
+						</div>
+						<div class="4u$ 12u$(medium)">
+							<section class="box">
+								<i class="icon big rounded color6 fa-file-text-o"></i>
+								<h3>Resume</h3>
+								<p>Professional experience.</p>
+							</section>
+						</div>
+					</div>
+				</div>
+			</section>
+{{ end }}
