@@ -1,0 +1,50 @@
+{{ define "title" }}<title>clementscode: resume</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+
+					<header class="major">
+						<h2>Hobby Projects</h2>
+						<p>Coding endeavors done in my spare time. Mostly written in Go.</p>
+					</header>
+
+					<!-- Text -->
+						<section>
+							<h3>This website</h3>
+							<p>The clementscode website was originally done in hodgepodge of languages (php, python, etc). In
+2015, I redid the website with the backend completely in Go.</p>
+									<ul class="icons">
+										<li><a href="https://github.com/bclement/clementsweb" class="icon fa-github"> Source
+Code<span class="label">Github</span></a></li>
+									</ul>
+
+							<hr />
+
+							<h3>starmap</h3>
+							<p>Interactive map of the stars using OpenLayers as the client. Backend is a barebones OGC WMS
+implementation offering star, constellation and asterism layers.</p>
+									<ul class="icons">
+										<li><a href="http://starmap.clementscode.com" class="icon fa-external-link"> Running
+Instance<span class="label">starmap</span></a></li>
+										<li><a href="https://github.com/bclement/clementsweb" class="icon fa-github"> Source
+Code<span
+class="label">Github</span></a></li>
+									</ul>
+							<hr />
+
+							<h3>Golang Programming Excecises</h3>
+							<p>Simple programming problems that can be done in (mostly) one sitting. Based off of the <a
+href="http://codekata.com">codekata.com</a> website. Also includes a simulation of the World War II Enigma cipher machine.</p>
+									<ul class="icons">
+										<li><a href="https://github.com/bclement/gokata" class="icon fa-github"> Source
+Code<span
+class="label">Github</span></a></li>
+									</ul>
+						</section>
+                </div>
+            </section>
+{{ end }}
