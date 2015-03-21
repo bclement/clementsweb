@@ -80,16 +80,21 @@ func main() {
     homeTemplate := createTemplate(*webroot, "base.html", "home.template")
     resumeTemplate := createTemplate(*webroot, "base.html", "resume.template")
     projectsTemplate := createTemplate(*webroot, "base.html", "projects.template")
+    vidplayerTemplate:= createTemplate(*webroot, "base.html", "vidplayer.template")
+    vidlistTemplate:= createTemplate(*webroot, "base.html", "vidlist.template")
 
     homeHandler := handler.Home(db, homeTemplate)
     staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
     resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
     projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
+    videosHandler := handler.Videos(db, vidplayerTemplate, vidlistTemplate, *webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
     r.Handle("/resume", resumeHandler)
     r.Handle("/projects", projectsHandler)
+    r.Handle("/videos/", videosHandler)
+    r.Handle("/videos/{path:.*}", videosHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
     handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 

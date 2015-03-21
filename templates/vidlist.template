@@ -1,0 +1,20 @@
+{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+                    <ul class="flex-container wrap">
+                        {{range $id, $vid := .Videos}}
+                        <li>
+                            <a href=".?v={{$id}}&amp;d={{$.Data}}">
+                                <img src="{{$vid.Thumbnail}}">
+                            </a>
+                            <p>{{$vid.Title}}</p>
+                        </li>
+                        {{end}}
+                        </ul>
+                    </div>
+            </section>
+{{ end }}

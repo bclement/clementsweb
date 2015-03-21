@@ -1,0 +1,21 @@
+{{ define "title" }}<title>{{ .Video.Title }}</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+                    <video controls="controls" width="100%" autoplay="autoplay">
+                        {{range $vidfile := .Video.VidFiles }}
+                        <source src="{{$vidfile.Path}}" type="{{$vidfile.Type}}">
+                        {{end}}
+                        </source>
+                            An HTML5 browswer is required to view this video. <br>
+                            <a href="http://www.google.com/chrome">Get Google Chrome</a>
+                    </video>
+                    <h3>{{ .Video.Title }}</h3>
+                    <p>{{ .Video.Description }}</p>
+                </div>
+            </section>
+{{ end }}
