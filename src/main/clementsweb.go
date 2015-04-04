@@ -81,13 +81,15 @@ func main() {
     resumeTemplate := createTemplate(*webroot, "base.html", "resume.template")
     projectsTemplate := createTemplate(*webroot, "base.html", "projects.template")
     vidplayerTemplate:= createTemplate(*webroot, "base.html", "vidplayer.template")
-    vidlistTemplate:= createTemplate(*webroot, "base.html", "vidlist.template")
+    vidlistTemplate := createTemplate(*webroot, "base.html", "vidlist.template")
+    missingTemplate := createTemplate(*webroot, "base.html", "missing.template")
 
     homeHandler := handler.Home(db, homeTemplate)
     staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
     resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
     projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
     videosHandler := handler.Videos(db, vidplayerTemplate, vidlistTemplate, *webroot)
+    missingHandler := handler.Missing(*webroot, missingTemplate)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
@@ -96,6 +98,7 @@ func main() {
     r.Handle("/videos/", videosHandler)
     r.Handle("/videos/{path:.*}", videosHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
+    r.NotFoundHandler = missingHandler
     handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 
 	if *standalone != "" { // run as standalone webapp

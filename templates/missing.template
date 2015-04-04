@@ -1,0 +1,18 @@
+{{ define "title" }}<title>clementscode: 404</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+					<header class="major">
+						<h2>404 (╯°□°）╯︵ ┻━┻</h2>
+						<p>I can't seem to find what your are looking for. So I made something up...</p>
+					</header>
+						<section>
+                        <p>{{.Text}}</p>
+						</section>
+                </div>
+            </section>
+{{ end }}
