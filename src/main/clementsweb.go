@@ -95,6 +95,7 @@ func main() {
 	r.Handle("/", homeHandler)
     r.Handle("/resume", resumeHandler)
     r.Handle("/projects", projectsHandler)
+    r.Handle("/videos", handler.Redirect("videos/"))
     r.Handle("/videos/", videosHandler)
     r.Handle("/videos/{path:.*}", videosHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)

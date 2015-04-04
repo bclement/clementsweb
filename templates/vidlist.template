@@ -6,13 +6,15 @@
 		<!-- Main -->
 			<section id="main" class="wrapper">
                     <ul class="flex-container wrap">
-                        {{range $id, $vid := .Videos}}
+                        {{range $id := .Videos.ReverseKeys}}
+                        {{with $vid := index $.Videos.Entries $id}}
                         <li>
                             <a href=".?v={{$id}}&amp;d={{$.Data}}">
                                 <img src="{{$vid.Thumbnail}}">
                             </a>
                             <p>{{$vid.Title}}</p>
                         </li>
+                        {{end}}
                         {{end}}
                         </ul>
                     </div>

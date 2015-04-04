@@ -6,6 +6,7 @@ import (
     "github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
     "html/template"
+    "log"
     "net/http"
 )
 
@@ -32,6 +33,32 @@ type Video struct {
     VidFiles []VidFile
 }
 
+type VidMap struct {
+    Keys []string
+    Entries map[string]Video
+}
+
+func NewVidMap() *VidMap {
+    k := make([]string, 0, 8)
+    e := make(map[string]Video)
+    return &VidMap{k, e}
+}
+
+func (vm *VidMap) Put(key string, value Video) {
+    vm.Keys = append(vm.Keys, key)
+    vm.Entries[key] = value
+}
+
+func (vm *VidMap) ReverseKeys() []string {
+    size := len(vm.Keys)
+    last := size - 1
+    rval := make([]string, size)
+    for i := range vm.Keys {
+        rval[last - i] = vm.Keys[i]
+    }
+    return rval
+}
+
 func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	vars := mux.Vars(r)
     path, present := vars["path"]
@@ -47,12 +74,12 @@ func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
     headers := w.Header()
     headers.Add("Content-Type", "text/html")
 
+    var templateErr error
     data := r.FormValue("d")
     vidID := r.FormValue("v")
     if vidID == "" {
         keys, vids, err := h.listVideos(data)
         if err == nil {
-            fmt.Printf("%v\n", vids)
             pagedata["Videos"] = vids
             pagedata["Creators"] = keys
             if data == "" && len(keys) > 0 {
@@ -60,21 +87,24 @@ func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
             }else {
                 pagedata["Data"] = data
             }
-            h.listTemplate.Execute(w, pagedata)
+            templateErr = h.listTemplate.Execute(w, pagedata)
         }
     } else {
         video, err := h.getVideo(data, vidID)
         if err == nil {
             pagedata["Video"] = video
-            h.playerTemplate.Execute(w, pagedata)
+            templateErr = h.playerTemplate.Execute(w, pagedata)
         }
+    }
+    if templateErr != nil {
+        log.Printf("Problem rendering %v\n", templateErr)
     }
     return err
 }
 
-func (h VideoHandler) listVideos(data string) ([]string, map[string]Video, *AppError) {
+func (h VideoHandler) listVideos(data string) ([]string, *VidMap, *AppError) {
     var keys []string
-    var vids map[string]Video
+    var vids *VidMap
     var appErr *AppError
     err := h.db.View(func(tx *bolt.Tx) error {
         var err error
@@ -110,26 +140,24 @@ func listSubBuckets(bucket *bolt.Bucket) []string {
     for k, v := cur.First(); k != nil; k, v = cur.Next() {
         /* sub buckets have nil values */
         if v == nil {
-            rval = append(rval, string(v))
+            rval = append(rval, string(k))
         }
     }
     return rval
 }
 
-func listVideos(bucket *bolt.Bucket) (map[string]Video, error) {
-    rval := make(map[string]Video)
+func listVideos(bucket *bolt.Bucket) (*VidMap, error) {
+    rval := NewVidMap()
     var err error
     cur := bucket.Cursor()
-    fmt.Printf("here\n")
     for k, v := cur.First(); k != nil; k, v = cur.Next() {
-        fmt.Printf("k %v %v\n", string(k), v == nil)
         if v != nil {
             var vid Video
             err := json.Unmarshal(v, &vid)
             if err != nil {
                 break
             }
-            rval[string(k)] = vid
+            rval.Put(string(k), vid)
         }
     }
     return rval, err
