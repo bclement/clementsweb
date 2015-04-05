@@ -10,6 +10,7 @@ import (
     "github.com/stretchr/gomniauth/providers/google"
     "github.com/stretchr/objx"
     "github.com/stretchr/signature"
+    "log"
     "net/http"
 )
 
@@ -41,7 +42,12 @@ type ProviderInfo struct {
     Clientsecret string
 }
 
-func getInfo(db *bolt.DB, provider string) (ProviderInfo, error) {
+type UserInfo struct {
+    Email string
+    Roles []string
+}
+
+func getProviderInfo(db *bolt.DB, provider string) (ProviderInfo, error) {
     var rval ProviderInfo
     err := db.View(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte("auth.providers"))
@@ -59,10 +65,47 @@ func getInfo(db *bolt.DB, provider string) (ProviderInfo, error) {
     return rval, err
 }
 
+func GetUserInfo(db *bolt.DB, email string) (UserInfo, bool, error) {
+    var rval UserInfo
+    found := false
+    err := db.View(func(tx *bolt.Tx) error {
+        b := tx.Bucket([]byte("auth.userinfo"))
+        if b != nil {
+            encoded := b.Get([]byte(email))
+            if encoded != nil {
+                found = true
+                err := json.Unmarshal(encoded, &rval)
+                if err != nil {
+                    return err
+                }
+            }
+        }
+        return nil
+    })
+    return rval, found, err
+}
+
+func HasRole(db *bolt.DB, email, role string) bool {
+    rval := false
+    info, found, err := GetUserInfo(db, email)
+    if found {
+        for _, userRole := range info.Roles {
+            if role == userRole {
+                rval = true
+                break
+            }
+        }
+    }
+    if err != nil {
+        log.Printf("Problem checking roles %v\n", err)
+    }
+    return rval
+}
+
 func RegisterAuth(useOAuth bool, db *bolt.DB, r *mux.Router, baseUrl string) {
     if useOAuth {
         gomniauth.SetSecurityKey(signature.RandomKey(64))
-        googleInfo, _ := getInfo(db, GoogleProviderId)
+        googleInfo, _ := getProviderInfo(db, GoogleProviderId)
         googleCallbackUrl := baseUrl + GoogleCallbackPath
         goog := google.New(googleInfo.Clientid, googleInfo.Clientsecret, googleCallbackUrl)
         gomniauth.WithProviders(goog)

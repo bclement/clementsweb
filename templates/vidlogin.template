@@ -1,0 +1,16 @@
+{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+
+					<header class="major">
+						<h3>Not Authenticated</h3>
+						<p>Please login to see video content.</p>
+					</header>
+
+				</div>
+			</section>
+{{ end }}

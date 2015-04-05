@@ -11,14 +11,16 @@ import (
 )
 
 type VideoHandler struct {
+    loginTemplate *template.Template
+    blockedTemplate *template.Template
     playerTemplate *template.Template
     listTemplate *template.Template
     db *bolt.DB
     webroot string
 }
 
-func Videos(db *bolt.DB, pt, lt *template.Template, webroot string) *Wrapper {
-    return &Wrapper{VideoHandler{pt, lt, db, webroot}}
+func Videos(db *bolt.DB, lit, bt, pt, lt *template.Template, webroot string) *Wrapper {
+    return &Wrapper{VideoHandler{lit, bt, pt, lt, db, webroot}}
 }
 
 type VidFile struct {
@@ -60,14 +62,35 @@ func (vm *VidMap) ReverseKeys() []string {
 }
 
 func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
+    login := getLoginInfo(r)
+    pagedata := map[string]interface{}{"Login":login}
+
+    var err *AppError
+    var templateErr error
+
+    if !login.Authenticated() {
+        templateErr = h.loginTemplate.Execute(w, pagedata)
+    } else if !HasRole(h.db, login.Email, "VidWatcher") {
+        /* TODO send code 403 forbidden */
+        templateErr = h.blockedTemplate.Execute(w, pagedata)
+    } else {
+        err = h.serve(login, w, r)
+    }
+    if templateErr != nil {
+        log.Printf("Problem rendering %v\n", templateErr)
+    }
+
+    return err
+}
+
+func (h VideoHandler) serve(login *LoginInfo, w http.ResponseWriter, r *http.Request) *AppError {
+    var err *AppError
 	vars := mux.Vars(r)
     path, present := vars["path"]
     if present {
         resourcePath := h.webroot + "/videos/" + path
         return ServeFile(w, resourcePath)
     }
-    var err *AppError
-    login := getLoginInfo(r)
 
     pagedata := map[string]interface{}{"Login":login}
 
@@ -118,7 +141,6 @@ func (h VideoHandler) listVideos(data string) ([]string, *VidMap, *AppError) {
                 datakey = data
             }
 
-            fmt.Println(datakey)
             nested := b.Bucket([]byte(datakey))
             if nested != nil {
                 vids, err = listVideos(nested)

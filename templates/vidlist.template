@@ -6,6 +6,25 @@
 		<!-- Main -->
 			<section id="main" class="wrapper">
                     <ul class="flex-container wrap">
+                        <li>
+                            <form action=".">
+                                <ul class="actions" >
+                                    <li>
+                                        <select name="data">
+                                            <option value="">-creator-</option>
+                                        {{range $creator := .Creators}}
+                                            <option value="{{$creator}}">{{$creator}}</option>
+                                        {{end}}
+                                        </select>
+                                    </li>
+                                    <li>
+                                        <input type="submit" value="apply" />
+                                    </li>
+                                </ul>
+                            </form>
+                        </li>
+                    </ul>
+                    <ul class="flex-container wrap">
                         {{range $id := .Videos.ReverseKeys}}
                         {{with $vid := index $.Videos.Entries $id}}
                         <li>

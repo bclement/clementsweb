@@ -80,6 +80,8 @@ func main() {
     homeTemplate := createTemplate(*webroot, "base.html", "home.template")
     resumeTemplate := createTemplate(*webroot, "base.html", "resume.template")
     projectsTemplate := createTemplate(*webroot, "base.html", "projects.template")
+    vidblockTemplate := createTemplate(*webroot, "base.html", "vidblock.template")
+    vidloginTemplate := createTemplate(*webroot, "base.html", "vidlogin.template")
     vidplayerTemplate:= createTemplate(*webroot, "base.html", "vidplayer.template")
     vidlistTemplate := createTemplate(*webroot, "base.html", "vidlist.template")
     missingTemplate := createTemplate(*webroot, "base.html", "missing.template")
@@ -88,7 +90,8 @@ func main() {
     staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
     resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
     projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
-    videosHandler := handler.Videos(db, vidplayerTemplate, vidlistTemplate, *webroot)
+    videosHandler := handler.Videos(db, vidloginTemplate, vidblockTemplate,
+        vidplayerTemplate, vidlistTemplate, *webroot)
     missingHandler := handler.Missing(*webroot, missingTemplate)
 
 	r := mux.NewRouter()
