@@ -98,7 +98,8 @@ func (h VideoHandler) serve(w http.ResponseWriter, r *http.Request,
     path, present := vars["path"]
     if present {
         resourcePath := h.webroot + "/videos/" + path
-        return ServeFile(w, resourcePath)
+        http.ServeFile(w, r, resourcePath)
+        return nil
     }
 
     headers := w.Header()

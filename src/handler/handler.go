@@ -2,11 +2,9 @@ package handler
 
 import (
 	"html/template"
-    "io"
     "log"
     "mime"
     "net/http"
-    "os"
     "path/filepath"
 )
 
@@ -57,23 +55,6 @@ func (h GenericHandler) Handle(w http.ResponseWriter, r *http.Request,
     log.Printf("data: %v\n", data)
 
 	h.Template.Execute(w, data)
-    return nil
-}
-
-/* copies file denoted by fname to response */
-func ServeFile(w http.ResponseWriter, fname string) *AppError {
-	/* FIXME ensure path is sanitary */
-	f, err := os.Open(fname)
-	if err != nil {
-		if os.IsNotExist(err) {
-            return &AppError{err, "File Not Found", http.StatusNotFound}
-		} else {
-            return &AppError{err, "Internal Server Error", http.StatusInternalServerError}
-		}
-	} else {
-		WriteContentHeader(w, fname)
-		io.Copy(w, f)
-	}
     return nil
 }
 
