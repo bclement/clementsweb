@@ -10,7 +10,7 @@
                             <form action=".">
                                 <ul class="actions" >
                                     <li>
-                                        <select name="data">
+                                        <select name="d">
                                             <option value="">-creator-</option>
                                         {{range $creator := .Creators}}
                                             <option value="{{$creator}}">{{$creator}}</option>

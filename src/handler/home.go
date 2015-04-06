@@ -29,11 +29,6 @@ type Quote struct {
 	Source string
 }
 
-type HomePageData struct {
-    Login *LoginInfo
-    Quote *Quote
-}
-
 func getRandomKey(lastKey string) (string, bool) {
     index, err := strconv.Atoi(lastKey)
     if err != nil || index < 0 {
@@ -77,8 +72,8 @@ func getRandomQuote(db *bolt.DB) (*Quote, *AppError) {
     return &q, nil
 }
 
-func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
-    login := getLoginInfo(r)
+func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request,
+        pagedata map[string]interface{}) *AppError {
     quote, appErr := getRandomQuote(h.db)
 	if appErr != nil {
         return appErr
@@ -87,7 +82,9 @@ func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	h.template.Execute(w, HomePageData{login, quote})
+    pagedata["Quote"] = quote
+
+	h.template.Execute(w, pagedata)
     return nil
 }
 

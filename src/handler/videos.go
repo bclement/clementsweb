@@ -61,9 +61,16 @@ func (vm *VidMap) ReverseKeys() []string {
     return rval
 }
 
-func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
-    login := getLoginInfo(r)
-    pagedata := map[string]interface{}{"Login":login}
+func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request,
+        pagedata map[string]interface{} ) *AppError {
+
+    var login *LoginInfo
+    obj, ok := pagedata["Login"]
+    if ok {
+        login = obj.(*LoginInfo)
+    } else {
+        login = getLoginInfo(r)
+    }
 
     var err *AppError
     var templateErr error
@@ -74,7 +81,7 @@ func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
         /* TODO send code 403 forbidden */
         templateErr = h.blockedTemplate.Execute(w, pagedata)
     } else {
-        err = h.serve(login, w, r)
+        err = h.serve(w, r, pagedata)
     }
     if templateErr != nil {
         log.Printf("Problem rendering %v\n", templateErr)
@@ -83,7 +90,9 @@ func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request) *AppError {
     return err
 }
 
-func (h VideoHandler) serve(login *LoginInfo, w http.ResponseWriter, r *http.Request) *AppError {
+func (h VideoHandler) serve(w http.ResponseWriter, r *http.Request,
+        pagedata map[string]interface{} ) *AppError {
+
     var err *AppError
 	vars := mux.Vars(r)
     path, present := vars["path"]
@@ -91,8 +100,6 @@ func (h VideoHandler) serve(login *LoginInfo, w http.ResponseWriter, r *http.Req
         resourcePath := h.webroot + "/videos/" + path
         return ServeFile(w, resourcePath)
     }
-
-    pagedata := map[string]interface{}{"Login":login}
 
     headers := w.Header()
     headers.Add("Content-Type", "text/html")

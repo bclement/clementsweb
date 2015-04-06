@@ -34,9 +34,9 @@
 						<li><a href="/resume">Resume</a></li>
                         {{ if .Login.Authenticated }}
                         <li>Logged in as {{ .Login.Email }}</li>
-						<li><a href="/auth/logout" class="button special">Log Out</a></li>
+                        <li><a href="/auth/logout?return={{.PathInfo}}" class="button special">Log Out</a></li>
                         {{ else }}
-						<li><a href="/auth/google/login" class="button special">Log In</a></li>
+                        <li><a href="/auth/google/login?return={{.PathInfo}}" class="button special">Log In</a></li>
                         {{ end }}
 					</ul>
 				</nav>

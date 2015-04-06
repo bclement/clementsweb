@@ -23,15 +23,6 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
-
-func handleStatic(w http.ResponseWriter, r *http.Request) *handler.AppError {
-	vars := mux.Vars(r)
-	prepath := vars["prepath"]
-	postpath := vars["postpath"]
-	resourcePath := *webroot + prepath + "/static/" + postpath
-	return handler.ServeFile(w, resourcePath)
-}
-
 func setupLog(logdir string) *os.File {
 	logfile := logdir + "log.txt"
 	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -87,7 +78,7 @@ func main() {
     missingTemplate := createTemplate(*webroot, "base.html", "missing.template")
 
     homeHandler := handler.Home(db, homeTemplate)
-    staticHandler := handler.Wrapper{handler.HandlerFunc(handleStatic)}
+    staticHandler := http.FileServer(http.Dir(*webroot))
     resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
     projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
     videosHandler := handler.Videos(db, vidloginTemplate, vidblockTemplate,
@@ -97,7 +88,9 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
     r.Handle("/resume", resumeHandler)
+    r.Handle("/resume/", resumeHandler)
     r.Handle("/projects", projectsHandler)
+    r.Handle("/projects/", projectsHandler)
     r.Handle("/videos", handler.Redirect("videos/"))
     r.Handle("/videos/", videosHandler)
     r.Handle("/videos/{path:.*}", videosHandler)

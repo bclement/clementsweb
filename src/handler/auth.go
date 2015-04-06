@@ -119,13 +119,16 @@ func RegisterAuth(useOAuth bool, db *bolt.DB, r *mux.Router, baseUrl string) {
 }
 
 func handleTestAuth(w http.ResponseWriter, r *http.Request) *AppError {
+    returnPath := r.FormValue("return")
+    if returnPath == "" {
+        returnPath = "/"
+    }
     session, _ := store.Get(r, SessionName)
     session.Values[EmailKey] = "test@example.com"
     session.Values[NameKey] = "Test User"
 
     session.Save(r, w)
-    /* TODO redirect to last page user was on */
-    http.Redirect(w, r, "/", http.StatusFound)
+    http.Redirect(w, r, returnPath, http.StatusFound)
     return nil
 }
 
@@ -142,6 +145,10 @@ func getSessionValue(session *sessions.Session, key string) string {
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) *AppError {
+    returnPath := r.FormValue("return")
+    if returnPath == "" {
+        returnPath = "/"
+    }
     session, _ := store.Get(r, SessionName)
     session.Values[EmailKey] = ""
     session.Values[NameKey] = ""
@@ -149,8 +156,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) *AppError {
     but firefox seems to ignore a cookie that is already expired */
     //session.Options = &sessions.Options{MaxAge: -1}
     session.Save(r, w)
-    /* TODO redirect to last page user was on */
-    http.Redirect(w, r, "/", http.StatusFound)
+    http.Redirect(w, r, returnPath, http.StatusFound)
     return nil
 }
 
@@ -160,7 +166,9 @@ func loginHandler(providerName string) Wrapper {
         panic(err)
     }
     f := func(w http.ResponseWriter, r *http.Request) *AppError {
-        state := gomniauth.NewState("after", "success")
+        returnPath := r.FormValue("return")
+
+        state := gomniauth.NewState("after", returnPath)
         authUrl, err := provider.GetBeginAuthURL(state, nil)
         if err != nil {
             return &AppError{err, "Unable to get auth URL after success", http.StatusInternalServerError}
@@ -198,7 +206,16 @@ func callBackHandler(providerName string) Wrapper {
 
         session.Save(r, w)
         /* TODO redirect to last page user was on */
-        http.Redirect(w, r, "/", http.StatusFound)
+        target := "/"
+        stateParam := r.FormValue("state")
+        state, err := gomniauth.StateFromParam(stateParam)
+        if err == nil {
+            after := state.Get("after").Str("/")
+            if after != "" {
+                target = after
+            }
+        }
+        http.Redirect(w, r, target, http.StatusFound)
         return nil
     }
     return Wrapper{HandlerFunc(f)}
