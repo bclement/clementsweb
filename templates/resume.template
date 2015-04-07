@@ -4,7 +4,7 @@
 {{ define "content" }}
 		<!-- Main -->
         <section id="main" class="wrapper" >
-            <iframe  height="1350" width="100%"
+            <iframe  height="1600" width="100%"
                 src="https://docs.google.com/a/clementscode.com/document/d/1ZwX1I8TPkXIlqVcuctIwwmVzZpqCYQLQ-99bSfMMpPw/pub?embedded=true"></iframe>
         </section>
 {{ end }}

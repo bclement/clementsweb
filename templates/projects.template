@@ -30,15 +30,44 @@ implementation offering star, constellation and asterism layers.</p>
 									<ul class="icons">
 										<li><a href="http://starmap.clementscode.com" class="icon fa-external-link"> Running
 Instance<span class="label">starmap</span></a></li>
-										<li><a href="https://github.com/bclement/clementsweb" class="icon fa-github"> Source
+										<li><a href="https://github.com/bclement/starmap" class="icon fa-github"> Source
 Code<span
 class="label">Github</span></a></li>
 									</ul>
 							<hr />
 
-							<h3>Golang Programming Excecises</h3>
+							<h3>boltsh</h3>
+							<p>Basic interactive shell for the Bolt embedded database. Used to walk and display
+contents of a database file which uses nested buckets.</p>
+									<ul class="icons">
+										<li><a href="https://github.com/bclement/boltsh" class="icon fa-github"> Source
+Code<span
+class="label">Github</span></a></li>
+									</ul>
+							<hr />
+							<h3>Text Generator</h3>
+							<p>Simple psudo random text generation using Markov chains. Inspired from a codewalk at
+<a href="https://golang.org/doc/codewalk/markov/">https://golang.org/doc/codewalk/markov/</a>. This is used in
+generating the 404 page for this website.</p>
+									<ul class="icons">
+										<li><a href="http://clementscode.com/404" class="icon fa-external-link"> Running
+Instance<span class="label">textgen</span></a></li>
+										<li><a href="https://github.com/bclement/textgen" class="icon fa-github"> Source
+Code<span
+class="label">Github</span></a></li>
+									</ul>
+							<hr />
+							<h3>Cryptographic machine emulation</h3>
+							<p>Simulation of the World War II enigma cryptography machine.</p>
+									<ul class="icons">
+										<li><a href="https://github.com/bclement/gocipher" class="icon fa-github"> Source
+Code<span
+class="label">Github</span></a></li>
+									</ul>
+                            <hr />
+							<h3>Golang Programming Exercises</h3>
 							<p>Simple programming problems that can be done in (mostly) one sitting. Based off of the <a
-href="http://codekata.com">codekata.com</a> website. Also includes a simulation of the World War II Enigma cipher machine.</p>
+href="http://codekata.com">codekata.com</a> website.</p>
 									<ul class="icons">
 										<li><a href="https://github.com/bclement/gokata" class="icon fa-github"> Source
 Code<span

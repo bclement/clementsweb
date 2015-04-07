@@ -21,23 +21,29 @@
 					<div class="row 150%">
 						<div class="4u 12u$(medium)">
 							<section class="box">
-								<i class="icon big rounded color1 fa-rocket"></i>
-								<h3>Projects</h3>
-								<p>Spare time killers.</p>
+                                <a href="/projects">
+								    <i class="icon big rounded color1 fa-rocket"></i>
+								    <h3>Projects</h3>
+								    <p>Spare time killers.</p>
+                                </a>
 							</section>
 						</div>
 						<div class="4u 12u$(medium)">
 							<section class="box">
-								<i class="icon big rounded color9 fa-envelope"></i>
-								<h3>Email</h3>
-								<p>If you want to contact me.</p>
+                                <a href="mailto:web@clementscode.com">
+								    <i class="icon big rounded color9 fa-envelope"></i>
+								    <h3>Email</h3>
+								    <p>If you want to contact me.</p>
+                                </a>
 							</section>
 						</div>
 						<div class="4u$ 12u$(medium)">
 							<section class="box">
-								<i class="icon big rounded color6 fa-file-text-o"></i>
-								<h3>Resume</h3>
-								<p>Professional experience.</p>
+                                <a href="/resume">
+								    <i class="icon big rounded color6 fa-file-text-o"></i>
+								    <h3>Resume</h3>
+								    <p>Professional experience.</p>
+                                </a>
 							</section>
 						</div>
 					</div>
