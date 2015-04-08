@@ -5,56 +5,73 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"html/template"
-    "math/rand"
+	"math/rand"
 	"net/http"
-    "strconv"
-    "time"
+	"strconv"
+	"time"
 )
 
 func init() {
-    rand.Seed(time.Now().UTC().UnixNano())
+	rand.Seed(time.Now().UTC().UnixNano())
 }
 
+/*
+HomeHandler handles home page requests
+*/
 type HomeHandler struct {
-    template *template.Template
-    db *bolt.DB
+	template *template.Template
+	db       *bolt.DB
 }
 
-func Home(db *bolt.DB, t *template.Template) *Wrapper {
-    return &Wrapper{HomeHandler{t, db}}
+/*
+Home creates a new HomeHandler
+*/
+func Home(db *bolt.DB, webroot string) *Wrapper {
+	homeTemplate := CreateTemplate(webroot, "base.html", "home.template")
+	return &Wrapper{HomeHandler{homeTemplate, db}}
 }
 
+/*
+Quote is used to store programmer quote information to be applied to the page template
+*/
 type Quote struct {
 	Quote  string
 	Source string
 }
 
+/*
+getRandomKey returns a random database key given the highest key.
+Keys are assumed to be ASCII encoded numeric values
+*/
 func getRandomKey(lastKey string) (string, bool) {
-    index, err := strconv.Atoi(lastKey)
-    if err != nil || index < 0 {
-        return "", false
-    }
-    /* +1 to include last index in possible results */
-    randIndex := rand.Intn(index + 1)
-    keylen := len(lastKey)
-    formatStr := fmt.Sprintf("%%0%dd", keylen)
-    return fmt.Sprintf(formatStr, randIndex), true
+	index, err := strconv.Atoi(lastKey)
+	if err != nil || index < 0 {
+		return "", false
+	}
+	/* +1 to include last index in possible results */
+	randIndex := rand.Intn(index + 1)
+	keylen := len(lastKey)
+	formatStr := fmt.Sprintf("%%0%dd", keylen)
+	return fmt.Sprintf(formatStr, randIndex), true
 }
 
+/*
+getRandomQuote retreives a random programmer quote from the database
+*/
 func getRandomQuote(db *bolt.DB) (*Quote, *AppError) {
-    var q Quote
-    err := db.View(func(tx *bolt.Tx) error {
+	var q Quote
+	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("quotes"))
 		if b != nil {
-            c := b.Cursor()
-            key, encoded := c.Last()
-            index, ok := getRandomKey(string(key))
-            if ok {
-                key, randomValue := c.Seek([]byte(index))
-                if key != nil {
-                    encoded = randomValue
-                }
-            }
+			c := b.Cursor()
+			key, encoded := c.Last()
+			index, ok := getRandomKey(string(key))
+			if ok {
+				key, randomValue := c.Seek([]byte(index))
+				if key != nil {
+					encoded = randomValue
+				}
+			}
 			if encoded != nil {
 				err := json.Unmarshal(encoded, &q)
 				if err != nil {
@@ -66,25 +83,27 @@ func getRandomQuote(db *bolt.DB) (*Quote, *AppError) {
 		return nil
 	})
 	if err != nil {
-        err = fmt.Errorf("Unable to get quote from db: %v", err)
-        return nil, &AppError{err, "Internal Server Error", http.StatusInternalServerError}
+		err = fmt.Errorf("Unable to get quote from db: %v", err)
+		return nil, &AppError{err, "Internal Server Error", http.StatusInternalServerError}
 	}
-    return &q, nil
+	return &q, nil
 }
 
+/*
+see AppHandler interface
+*/
 func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request,
-        pagedata map[string]interface{}) *AppError {
-    quote, appErr := getRandomQuote(h.db)
+	pagedata map[string]interface{}) *AppError {
+	quote, appErr := getRandomQuote(h.db)
 	if appErr != nil {
-        return appErr
+		return appErr
 	}
 
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-    pagedata["Quote"] = quote
+	pagedata["Quote"] = quote
 
 	h.template.Execute(w, pagedata)
-    return nil
+	return nil
 }
-

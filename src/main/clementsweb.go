@@ -4,8 +4,7 @@ import (
 	"flag"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
-    "handler"
-	"html/template"
+	"handler"
 	"log"
 	"net/http"
 	"net/http/fcgi"
@@ -23,6 +22,9 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
+/*
+setupLog opens the log file for the webserver
+*/
 func setupLog(logdir string) *os.File {
 	logfile := logdir + "log.txt"
 	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -33,7 +35,11 @@ func setupLog(logdir string) *os.File {
 	return f
 }
 
+/*
+openDatabase opens the bolt embedded database file in the provided directory
+*/
 func openDatabase(dbdir string) *bolt.DB {
+	/* TODO database file name should be configurable */
 	dbfile := dbdir + "data.db"
 	if _, err := os.Stat(dbfile); err != nil {
 		log.Fatal(err)
@@ -45,18 +51,6 @@ func openDatabase(dbdir string) *bolt.DB {
 	return db
 }
 
-func createTemplate(webroot string, filenames ...string) *template.Template {
-    files := make([]string, len(filenames))
-    for i, f := range filenames {
-        files[i] = webroot + "templates/" + f
-    }
-	rval, err := template.ParseFiles(files...)
-	if err != nil {
-        log.Fatalf("Unable to parse files: %v. %v", files, err)
-	}
-	return rval
-}
-
 func main() {
 
 	flag.Parse()
@@ -65,38 +59,31 @@ func main() {
 		*webroot += "/"
 	}
 
-    db := openDatabase(*webroot)
+	db := openDatabase(*webroot)
 	defer db.Close()
 
-    homeTemplate := createTemplate(*webroot, "base.html", "home.template")
-    resumeTemplate := createTemplate(*webroot, "base.html", "resume.template")
-    projectsTemplate := createTemplate(*webroot, "base.html", "projects.template")
-    vidblockTemplate := createTemplate(*webroot, "base.html", "vidblock.template")
-    vidloginTemplate := createTemplate(*webroot, "base.html", "vidlogin.template")
-    vidplayerTemplate:= createTemplate(*webroot, "base.html", "vidplayer.template")
-    vidlistTemplate := createTemplate(*webroot, "base.html", "vidlist.template")
-    missingTemplate := createTemplate(*webroot, "base.html", "missing.template")
+	resumeTemplate := handler.CreateTemplate(*webroot, "base.html", "resume.template")
+	projectsTemplate := handler.CreateTemplate(*webroot, "base.html", "projects.template")
 
-    homeHandler := handler.Home(db, homeTemplate)
-    staticHandler := http.FileServer(http.Dir(*webroot))
-    resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
-    projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
-    videosHandler := handler.Videos(db, vidloginTemplate, vidblockTemplate,
-        vidplayerTemplate, vidlistTemplate, *webroot)
-    missingHandler := handler.Missing(*webroot, missingTemplate)
+	homeHandler := handler.Home(db, *webroot)
+	staticHandler := http.FileServer(http.Dir(*webroot))
+	resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
+	projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
+	videosHandler := handler.Videos(db, *webroot)
+	missingHandler := handler.Missing(*webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
-    r.Handle("/resume", resumeHandler)
-    r.Handle("/resume/", resumeHandler)
-    r.Handle("/projects", projectsHandler)
-    r.Handle("/projects/", projectsHandler)
-    r.Handle("/videos", handler.Redirect("videos/"))
-    r.Handle("/videos/", videosHandler)
-    r.Handle("/videos/{path:.*}", videosHandler)
+	r.Handle("/resume", resumeHandler)
+	r.Handle("/resume/", resumeHandler)
+	r.Handle("/projects", projectsHandler)
+	r.Handle("/projects/", projectsHandler)
+	r.Handle("/videos", handler.Redirect("videos/"))
+	r.Handle("/videos/", videosHandler)
+	r.Handle("/videos/{path:.*}", videosHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
-    r.NotFoundHandler = missingHandler
-    handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
+	r.NotFoundHandler = missingHandler
+	handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 
 	if *standalone != "" { // run as standalone webapp
 		err = http.ListenAndServe(*standalone, r)
