@@ -70,6 +70,7 @@ func main() {
 	resumeHandler := handler.Wrapper{handler.GenericHandler{resumeTemplate}}
 	projectsHandler := handler.Wrapper{handler.GenericHandler{projectsTemplate}}
 	videosHandler := handler.Videos(db, *webroot)
+    vidUploadHandler := handler.VideoUpload(db, *webroot)
 	missingHandler := handler.Missing(*webroot)
 
 	r := mux.NewRouter()
@@ -80,6 +81,7 @@ func main() {
 	r.Handle("/projects/", projectsHandler)
 	r.Handle("/videos", handler.Redirect("videos/"))
 	r.Handle("/videos/", videosHandler)
+    r.Handle("/videos/upload", vidUploadHandler)
 	r.Handle("/videos/{path:.*}", videosHandler)
 	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
 	r.NotFoundHandler = missingHandler

@@ -28,7 +28,7 @@ func main() {
 
 	db, err := bolt.Open(*dbfile, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("can't open " + *dbfile + " ", err)
 	}
 	defer db.Close()
 
@@ -40,7 +40,7 @@ func main() {
 	var updates map[string]interface{}
 	err = json.Unmarshal(data, &updates)
 	if err != nil {
-		log.Fatal(err)
+        log.Fatal("Unable to unmarshal data: " + string(data) + " ",  err)
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -61,7 +61,7 @@ func main() {
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Problem updating value. ", err)
 	}
 }
 
@@ -74,7 +74,7 @@ func importRecursive(level int, entries map[string]interface{}, parent *bolt.Buc
 			}
 			bucket, err := parent.CreateBucketIfNotExists([]byte(key))
 			if err != nil {
-				return err
+                return fmt.Errorf("Unable to get bucket for key: %v. %v",  key, err)
 			}
 			err = importRecursive(level+1, child, bucket)
 			if err != nil {

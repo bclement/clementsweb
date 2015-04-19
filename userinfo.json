@@ -2,7 +2,7 @@
     "auth.userinfo" : {
         "test@example.com" : {
             "Email" : "test@example.com",
-            "Roles" : ["VidWatcher"]
+            "Roles" : ["VidWatcher", "VidUploader"]
         }
     }
 }

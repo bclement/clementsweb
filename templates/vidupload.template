@@ -1,0 +1,47 @@
+{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3>Video Upload</h3>
+                            {{ if .Status }}
+                            <p>{{.Status}}</p>
+                            {{end}}
+							<form method="post" enctype="multipart/form-data" action="upload">
+								<div class="row">
+									<div class="six colums">
+                                        <label>Video File</label>
+                                        <input type="file" name="file" id="file" value=""
+placeholder="File" />
+                                    </div>
+									<div class="six columns">
+                                        <label>Thumbnail File</label>
+                                        <input type="file" name="thumbnail" id="thumbnail" value=""
+placeholder="Thumbnail" />
+                                    </div>
+                                </div>
+								<div class="row uniform 50%">
+									<div class="6u 12u$(4)">
+										<input type="text" name="title" id="title" value=""
+placeholder="Title" />
+									</div>
+									<div class="12u$">
+										<textarea name="description" id="description"
+placeholder="Description" rows="6"></textarea>
+									</div>
+									<div class="12u$">
+										<ul class="actions">
+											<li><input type="submit" value="Submit" class="special" /></li>
+											<li><input type="reset" value="Reset" /></li>
+										</ul>
+									</div>
+								</div>
+							</form>
+                            <a href="/videos">Back to videos</a>
+                        </section>
+				</div>
+			</section>
+{{ end }}
