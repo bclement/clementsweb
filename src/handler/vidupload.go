@@ -107,15 +107,24 @@ returns http.ErrMissingFile if either are missing
 */
 func readFiles(r *http.Request) (vname, tname string, vfile, tfile multipart.File, err error) {
 
-	var headers *multipart.FileHeader
-	vfile, headers, err = r.FormFile("file")
-	if err == nil {
-		vname = headers.Filename
-		tfile, headers, err = r.FormFile("thumbnail")
+	/*  FIXME dreamhost doesn't allow big uploads
+	    workaround is to scp files and then put the filename in the form
+	*/
+	/*
+		var headers *multipart.FileHeader
+		vfile, headers, err = r.FormFile("file")
 		if err == nil {
-			tname = headers.Filename
+			vname = headers.Filename
+			tfile, headers, err = r.FormFile("thumbnail")
+			if err == nil {
+				tname = headers.Filename
+			}
 		}
-	}
+	*/
+
+	vname = r.FormValue("file")
+	tname = r.FormValue("thumbnail")
+
 	return
 }
 
@@ -236,12 +245,18 @@ writeFile writes the file to the path on the filesystem
 */
 func writeFile(path string, src multipart.File) error {
 
-	target, err := os.Create(path)
-	if err == nil {
-		defer target.Close()
-		_, err = io.Copy(target, src)
-		if err != nil {
-			err = target.Sync()
+	var target *os.File
+	_, err := os.Stat(path)
+	/* no op if file already exists */
+	/* TODO that could bite us if names are sloppy */
+	if os.IsNotExist(err) {
+		target, err = os.Create(path)
+		if err == nil {
+			defer target.Close()
+			_, err = io.Copy(target, src)
+			if err != nil {
+				err = target.Sync()
+			}
 		}
 	}
 

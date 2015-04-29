@@ -10,19 +10,23 @@
                             {{ if .Status }}
                             <p>{{.Status}}</p>
                             {{end}}
-							<form method="post" enctype="multipart/form-data" action="upload">
+                                <!-- dirty hack since files have to be scp'd -->
+                                <!-- this keeps the UI the same, but only file names transfer -->
 								<div class="row">
 									<div class="six colums">
                                         <label>Video File</label>
-                                        <input type="file" name="file" id="file" value=""
-placeholder="File" />
+                                        <input type="file" name="file" id="ui_file" value=""
+placeholder="File" onchange="document.getElementById('file').value = this.value;"/>
                                     </div>
 									<div class="six columns">
                                         <label>Thumbnail File</label>
-                                        <input type="file" name="thumbnail" id="thumbnail" value=""
-placeholder="Thumbnail" />
+                                        <input type="file" name="thumbnail" id="ui_thumbnail" value=""
+placeholder="Thumbnail" onchange="document.getElementById('thumbnail').value = this.value;"/>
                                     </div>
                                 </div>
+							<form method="post" enctype="multipart/form-data" action="upload">
+                                <input type="hidden" name="file" id="file" value="" />
+                                <input type="hidden" name="thumbnail" id="thumbnail" value="" />
 								<div class="row uniform 50%">
 									<div class="6u 12u$(4)">
 										<input type="text" name="title" id="title" value=""
