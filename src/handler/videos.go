@@ -3,11 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"log"
 	"net/http"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 )
 
 /*
@@ -160,6 +161,7 @@ func (h VideoHandler) serve(w http.ResponseWriter, r *http.Request,
 		video, err := h.getVideo(data, vidID)
 		if err == nil {
 			pagedata["Video"] = video
+			pagedata["Data"] = data
 			templateErr = h.playerTemplate.Execute(w, pagedata)
 		}
 	}

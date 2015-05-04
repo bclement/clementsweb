@@ -1,0 +1,25 @@
+{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3>Video Upload</h3>
+							<form method="post" action="subscription">
+                            {{ if .Subscribed }}
+                            <p>You are currently subscribed to email notifications of new
+videos. Click below to unsubscribe.</p>
+						    <input type="submit" name="action" value="Unsubscribe" class="special" />
+                            {{else}}
+                            <p>You aren't currently subscribed to email notifications of new
+videos. Click below to subscribe.</p>
+						    <input type="submit" name="action" value="Subscribe" class="special" />
+                            {{end}}
+                            </form>
+                            <a href="/videos">Back to videos</a>
+                        </section>
+				</div>
+			</section>
+{{ end }}

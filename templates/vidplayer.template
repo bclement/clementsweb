@@ -16,6 +16,7 @@
                     </video>
                     <h3>{{ .Video.Title }}</h3>
                     <p>{{ .Video.Description }}</p>
+                    <a href="/videos/?d={{.Data}}">Back to videos</a>
                 </div>
             </section>
 {{ end }}

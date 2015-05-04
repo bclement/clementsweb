@@ -1,0 +1,17 @@
+From: {{.From}}
+Subject: New video posted on clementscode.com!
+Content-Type: text/html
+
+<html>
+<body>
+<p>A new video has been posted! Click the video title below to view.</p>
+<p><a href="http://clementscode.com/videos/?d={{.Data}}&v={{.Video}}">{{.Title}}</a></p>
+<p>No longer interested in these emails? <a
+href="http://clementscode.com/videos/subscription">Click here to manage
+subscriptions</a> (login required).</p>
+</body>
+</html>
+
+
+
+

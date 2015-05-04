@@ -2,6 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
@@ -10,8 +13,6 @@ import (
 	"github.com/stretchr/gomniauth/providers/google"
 	"github.com/stretchr/objx"
 	"github.com/stretchr/signature"
-	"log"
-	"net/http"
 )
 
 const (
@@ -30,6 +31,16 @@ const (
 store keeps track of the secure cookies used for login sessions
 */
 var store = sessions.NewCookieStore(securecookie.GenerateRandomKey(64))
+
+/*
+MailCreds stored credentials for email services
+*/
+type MailCreds struct {
+	From     string `json:"from"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Password string `json:"password"`
+}
 
 /*
 LoginInfo holds information for the currently logged in user form OAuth
@@ -68,19 +79,43 @@ getProviderInfo fetches provider information from the database
 func getProviderInfo(db *bolt.DB, provider string) (ProviderInfo, error) {
 	var rval ProviderInfo
 	err := db.View(func(tx *bolt.Tx) error {
+		var err error
 		b := tx.Bucket([]byte("auth.providers"))
 		if b != nil {
 			encoded := b.Get([]byte(provider))
 			if encoded != nil {
-				err := json.Unmarshal(encoded, &rval)
-				if err != nil {
-					return err
-				}
+				err = json.Unmarshal(encoded, &rval)
 			}
 		}
-		return nil
+		return err
 	})
 	return rval, err
+}
+
+/*
+GetMailCreds gets the email server credentials.
+The seond return value is only true if the object is populated and ready to read.
+*/
+func GetMailCreds(db *bolt.DB) (MailCreds, bool) {
+	var rval MailCreds
+	found := false
+	err := db.View(func(tx *bolt.Tx) error {
+		var err error
+		b := tx.Bucket([]byte("auth.services"))
+		if b != nil {
+			encoded := b.Get([]byte("mail"))
+			if encoded != nil {
+				err = json.Unmarshal(encoded, &rval)
+				found = err == nil
+			}
+		}
+		return err
+	})
+	if err != nil {
+		log.Printf("Problem getting mail creds %v\n", err)
+	}
+
+	return rval, found
 }
 
 /*
@@ -90,20 +125,154 @@ func GetUserInfo(db *bolt.DB, email string) (UserInfo, bool, error) {
 	var rval UserInfo
 	found := false
 	err := db.View(func(tx *bolt.Tx) error {
+		var err error
+		rval, found, err = extractInfo(tx, email)
+		return err
+	})
+	return rval, found, err
+}
+
+/*
+UsersWithRole returns a list of users with provided role
+*/
+func UsersWithRole(db *bolt.DB, role string) ([]string, error) {
+	var rval []string
+	var info UserInfo
+	err := db.View(func(tx *bolt.Tx) error {
+		var err error
 		b := tx.Bucket([]byte("auth.userinfo"))
 		if b != nil {
-			encoded := b.Get([]byte(email))
-			if encoded != nil {
-				found = true
-				err := json.Unmarshal(encoded, &rval)
-				if err != nil {
-					return err
+			c := b.Cursor()
+			key, val := c.First()
+			for ; key != nil; key, val = c.Next() {
+				if val != nil {
+					err = json.Unmarshal(val, &info)
+					if err == nil && UserHasRole(info, role) {
+						rval = append(rval, info.Email)
+					}
 				}
 			}
 		}
-		return nil
+		return err
+	})
+	return rval, err
+}
+
+/*
+AddRole adds the role to the user associated with email
+returns true if user info was found
+*/
+func AddRole(db *bolt.DB, email, role string) (UserInfo, bool, error) {
+	var rval UserInfo
+	found := false
+	err := db.Update(func(tx *bolt.Tx) error {
+		var err error
+		rval, found, err = extractInfo(tx, email)
+		if found {
+			rval.Roles = setAdd(rval.Roles, role)
+			err = saveInfo(tx, rval)
+		}
+
+		return err
 	})
 	return rval, found, err
+}
+
+/*
+RemoveRole removes the role from the user associated with email
+returns true if the user info was found
+*/
+func RemoveRole(db *bolt.DB, email, role string) (UserInfo, bool, error) {
+	var rval UserInfo
+	found := false
+	err := db.Update(func(tx *bolt.Tx) error {
+		var err error
+		rval, found, err = extractInfo(tx, email)
+		if found {
+			rval.Roles = setRemove(rval.Roles, role)
+			err = saveInfo(tx, rval)
+		}
+
+		return err
+	})
+	return rval, found, err
+}
+
+/*
+toSet converts a slice to a set
+*/
+func toSet(arr []string) map[string]bool {
+	rval := make(map[string]bool)
+	for _, s := range arr {
+		rval[s] = true
+	}
+	return rval
+}
+
+/*
+toSlice converts a set to a slice
+*/
+func toSlice(set map[string]bool) []string {
+	rval := make([]string, len(set))
+	i := 0
+	for key := range set {
+		rval[i] = key
+		i += 1
+	}
+	return rval
+}
+
+/*
+setAdd treats the slice as a set and adds an item
+new slice is returned, order is not preserved
+*/
+func setAdd(arr []string, item string) []string {
+	setMap := toSet(arr)
+	setMap[item] = true
+	return toSlice(setMap)
+}
+
+/*
+setRemove treats the slice as a set and removes an item
+new slice is returned, order is not preserved
+*/
+func setRemove(arr []string, item string) []string {
+	setMap := toSet(arr)
+	delete(setMap, item)
+	return toSlice(setMap)
+}
+
+/*
+exractInfo extracts a user's info object from the transaction
+returns true if info object was found in DB
+*/
+func extractInfo(tx *bolt.Tx, email string) (UserInfo, bool, error) {
+	var rval UserInfo
+	found := false
+	var err error
+	b := tx.Bucket([]byte("auth.userinfo"))
+	if b != nil {
+		encoded := b.Get([]byte(email))
+		if encoded != nil {
+			found = true
+			err = json.Unmarshal(encoded, &rval)
+		}
+	}
+	return rval, found, err
+}
+
+/*
+saveInfo saves the info object into the DB
+*/
+func saveInfo(tx *bolt.Tx, info UserInfo) error {
+	var err error
+	b := tx.Bucket([]byte("auth.userinfo"))
+	if b != nil {
+		var encoded []byte
+		encoded, err = json.Marshal(info)
+		b.Put([]byte(info.Email), encoded)
+	}
+	return err
 }
 
 /*
@@ -113,15 +282,24 @@ func HasRole(db *bolt.DB, email, role string) bool {
 	rval := false
 	info, found, err := GetUserInfo(db, email)
 	if found {
-		for _, userRole := range info.Roles {
-			if role == userRole {
-				rval = true
-				break
-			}
-		}
+		rval = UserHasRole(info, role)
 	}
 	if err != nil {
 		log.Printf("Problem checking roles %v\n", err)
+	}
+	return rval
+}
+
+/*
+UserHasRole returns true if userinfo contains given role
+*/
+func UserHasRole(info UserInfo, role string) bool {
+	rval := false
+	for _, userRole := range info.Roles {
+		if role == userRole {
+			rval = true
+			break
+		}
 	}
 	return rval
 }

@@ -1,19 +1,23 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/boltdb/bolt"
 	"html/template"
 	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/smtp"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	txtemplate "text/template"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 /*
@@ -23,6 +27,7 @@ type VideoUploadHandler struct {
 	loginTemplate   *template.Template
 	blockedTemplate *template.Template
 	uploadTemplate  *template.Template
+	notifyTemplate  *txtemplate.Template
 	db              *bolt.DB
 	webroot         string
 }
@@ -37,7 +42,12 @@ func VideoUpload(db *bolt.DB, webroot string) *Wrapper {
 	block := CreateTemplate(webroot, "base.html", "vidblock.template")
 	login := CreateTemplate(webroot, "base.html", "vidlogin.template")
 	upload := CreateTemplate(webroot, "base.html", "vidupload.template")
-	return &Wrapper{VideoUploadHandler{login, block, upload, db, webroot}}
+	notifyTemplateFile := webroot + "templates/notification.template"
+	notify, err := txtemplate.ParseFiles(notifyTemplateFile)
+	if err != nil {
+		log.Fatalf("Unable to parse notification file %v: %v\n", notifyTemplateFile, err)
+	}
+	return &Wrapper{VideoUploadHandler{login, block, upload, notify, db, webroot}}
 }
 
 /*
@@ -167,7 +177,7 @@ func (h VideoUploadHandler) process(title, desc, vname, tname string,
 	})
 
 	if err == nil && id != "" {
-		sendNotification(title, id)
+		h.sendNotification(title, "Brian", id)
 	} else {
 		err = fmt.Errorf("Unable to import video: %v", err)
 		appErr = &AppError{err, "Internal Server Error", http.StatusInternalServerError}
@@ -291,10 +301,31 @@ func saveMetadata(b *bolt.Bucket, id, title, desc, vpath, tpath string) error {
 }
 
 /*
-sendNotification sends out email notification when a new file is uploaded
+sendNotification sends out email notification to all video subscribers
 */
-func sendNotification(title, id string) error {
+func (h VideoUploadHandler) sendNotification(title, data, id string) {
 
-	/* TODO */
-	return nil
+	subscribers, err := UsersWithRole(h.db, "VidSubscriber")
+	if err == nil && len(subscribers) > 0 {
+		creds, found := GetMailCreds(h.db)
+		if found {
+			msgData := map[string]string{
+				"From":  creds.From,
+				"Data":  data,
+				"Video": id,
+				"Title": title,
+			}
+			auth := smtp.PlainAuth("", creds.From, creds.Password, creds.Host)
+			var msg bytes.Buffer
+			err = h.notifyTemplate.Execute(&msg, msgData)
+			if err == nil {
+				qualified := fmt.Sprintf("%v:%d", creds.Host, creds.Port)
+				err = smtp.SendMail(qualified, auth, creds.From, subscribers, msg.Bytes())
+			}
+		}
+	}
+
+	if err != nil {
+		log.Printf("Unable to send notifications: %v\n", err)
+	}
 }
