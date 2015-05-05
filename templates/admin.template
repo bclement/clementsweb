@@ -1,0 +1,53 @@
+{{ define "title" }}<title>clementscode: admin</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3>Roles</h3>
+							<div class="table-wrapper">
+								<table class="alt">
+									<thead>
+										<tr>
+											<th>user</th>
+											<th>roles</th>
+										</tr>
+									</thead>
+									<tbody>
+                                        {{range $info := .Infos}}
+										<tr>
+											<td>{{$info.Email}}</td>
+											<td>{{$info.Roles}}</td>
+										</tr>
+                                        {{end}}
+									</tbody>
+								</table>
+							</div>
+							<form method="post" enctype="multipart/form-data" action="admin">
+								<div class="row uniform 50%">
+									<div class="6u 12u$(4)">
+										<input type="text" name="user" id="user" value=""
+placeholder="User" />
+									</div>
+									<div class="6u 12u$(4)">
+										<input type="text" name="role" id="role" value=""
+placeholder="Role" />
+									</div>
+									<div class="12u$">
+										<ul class="actions">
+											<li><input type="submit" name="action" value="Add" class="special" /></li>
+											<li><input type="submit" name="action" value="Remove" class="special" /></li>
+											<li><input type="reset" value="Reset" /></li>
+										</ul>
+									</div>
+								</div>
+							</form>
+                            {{ if .Status }}
+                            <p>{{.Status}}</p>
+                            {{end}}
+                        </section>
+				</div>
+			</section>
+{{ end }}

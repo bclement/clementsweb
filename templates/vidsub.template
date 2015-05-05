@@ -6,7 +6,7 @@
 			<section id="main" class="wrapper">
 				<div class="container">
 						<section>
-						    <h3>Video Upload</h3>
+						    <h3>Video Subscription</h3>
 							<form method="post" action="subscription">
                             {{ if .Subscribed }}
                             <p>You are currently subscribed to email notifications of new

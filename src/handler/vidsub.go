@@ -99,7 +99,7 @@ func (h VideoSubHandler) subscribe(login *LoginInfo) (bool, *AppError) {
 	if !status {
 		var err error
 		var found bool
-		_, found, err = AddRole(h.db, login.Email, "VidSubscriber")
+		_, found, err = AddRole(h.db, login.Email, "VidSubscriber", false)
 		if found && err == nil {
 			status = true
 		} else if err != nil {

@@ -74,9 +74,11 @@ func main() {
 	vidUploadHandler := handler.VideoUpload(db, *webroot)
 	vidSubHandler := handler.VideoSub(db, *webroot)
 	missingHandler := handler.Missing(*webroot)
+	adminHandler := handler.Admin(db, *webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
+	r.Handle("/admin", adminHandler)
 	r.Handle("/resume", resumeHandler)
 	r.Handle("/resume/", resumeHandler)
 	r.Handle("/projects", projectsHandler)

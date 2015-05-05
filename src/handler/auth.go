@@ -133,6 +133,32 @@ func GetUserInfo(db *bolt.DB, email string) (UserInfo, bool, error) {
 }
 
 /*
+GetAllUsers gets all the user info objects from the DB
+*/
+func GetAllUsers(db *bolt.DB) ([]UserInfo, error) {
+	var rval []UserInfo
+	err := db.View(func(tx *bolt.Tx) error {
+		var err error
+		b := tx.Bucket([]byte("auth.userinfo"))
+		if b != nil {
+			c := b.Cursor()
+			key, val := c.First()
+			for ; key != nil; key, val = c.Next() {
+				if val != nil {
+					var info UserInfo
+					err = json.Unmarshal(val, &info)
+					if err == nil {
+						rval = append(rval, info)
+					}
+				}
+			}
+		}
+		return err
+	})
+	return rval, err
+}
+
+/*
 UsersWithRole returns a list of users with provided role
 */
 func UsersWithRole(db *bolt.DB, role string) ([]string, error) {
@@ -160,9 +186,10 @@ func UsersWithRole(db *bolt.DB, role string) ([]string, error) {
 
 /*
 AddRole adds the role to the user associated with email
+if create is true, user is created if not found
 returns true if user info was found
 */
-func AddRole(db *bolt.DB, email, role string) (UserInfo, bool, error) {
+func AddRole(db *bolt.DB, email, role string, create bool) (UserInfo, bool, error) {
 	var rval UserInfo
 	found := false
 	err := db.Update(func(tx *bolt.Tx) error {
@@ -170,6 +197,9 @@ func AddRole(db *bolt.DB, email, role string) (UserInfo, bool, error) {
 		rval, found, err = extractInfo(tx, email)
 		if found {
 			rval.Roles = setAdd(rval.Roles, role)
+			err = saveInfo(tx, rval)
+		} else if create {
+			rval = UserInfo{email, []string{role}}
 			err = saveInfo(tx, rval)
 		}
 
