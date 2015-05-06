@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -89,8 +90,7 @@ func (h VideoUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 			} else if !strings.HasSuffix(tname, "jpg") {
 				status = "Thumbnail must be a jpg file"
 			} else {
-				err = h.process(title, desc, vname, tname, vfile, tfile)
-				status = "Video uploaded successfully"
+				status = h.process(title, desc, vname, tname, vfile, tfile)
 			}
 		} else if readingErr == http.ErrMissingFile {
 			status = "Both file and thumbnail are required"
@@ -132,21 +132,33 @@ func readFiles(r *http.Request) (vname, tname string, vfile, tfile multipart.Fil
 		}
 	*/
 
-	vname = r.FormValue("file")
-	tname = r.FormValue("thumbnail")
+	vname = sanitizeFileName(r.FormValue("file"))
+	tname = sanitizeFileName(r.FormValue("thumbnail"))
 
 	return
+}
+
+/*
+sanitizeFileName ensures that the file name does not contain any path references.
+this is to prevent attacks that would write malicious files to arbitrary places on the FS
+*/
+func sanitizeFileName(fname string) string {
+	rval := fname
+	if rval != "" {
+		_, rval = path.Split(rval)
+	}
+	return rval
 }
 
 /*
 process saves the video and metadata in the filesystem and database
 */
 func (h VideoUploadHandler) process(title, desc, vname, tname string,
-	vfile, tfile multipart.File) *AppError {
+	vfile, tfile multipart.File) string {
 
-	var appErr *AppError
 	var vpath, tpath string
 	var id string
+	status := "Video uploaded successfully"
 	/* TODO status reporting */
 	err := h.db.Update(func(tx *bolt.Tx) error {
 		var err error
@@ -169,7 +181,6 @@ func (h VideoUploadHandler) process(title, desc, vname, tname string,
 		}
 
 		if err != nil {
-			tx.Rollback()
 			h.deleteFile(vpath)
 			h.deleteFile(tpath)
 		}
@@ -179,11 +190,10 @@ func (h VideoUploadHandler) process(title, desc, vname, tname string,
 	if err == nil && id != "" {
 		h.sendNotification(title, "Brian", id)
 	} else {
-		err = fmt.Errorf("Unable to import video: %v", err)
-		appErr = &AppError{err, "Internal Server Error", http.StatusInternalServerError}
+		status = err.Error()
 	}
 
-	return appErr
+	return status
 }
 
 /*
@@ -260,13 +270,18 @@ func writeFile(path string, src multipart.File) error {
 	/* no op if file already exists */
 	/* TODO that could bite us if names are sloppy */
 	if os.IsNotExist(err) {
-		target, err = os.Create(path)
-		if err == nil {
-			defer target.Close()
-			_, err = io.Copy(target, src)
-			if err != nil {
-				err = target.Sync()
+		/* TODO this is part of the scp hack */
+		if src != nil {
+			target, err = os.Create(path)
+			if err == nil {
+				defer target.Close()
+				_, err = io.Copy(target, src)
+				if err != nil {
+					err = target.Sync()
+				}
 			}
+		} else {
+			err = fmt.Errorf("Missing data for file: %v", path)
 		}
 	}
 
@@ -277,11 +292,15 @@ func writeFile(path string, src multipart.File) error {
 deleteFile deletes the file specified by path
 */
 func (h VideoUploadHandler) deleteFile(path string) {
-
-	absPath := filepath.Join(h.webroot, "videos", path)
-	err := os.Remove(absPath)
-	if err != nil {
-		log.Printf("Unable to cleanup file %v. %v\n", absPath, err)
+	if path != "" {
+		absPath := filepath.Join(h.webroot, "videos", path)
+		_, err := os.Stat(absPath)
+		if err == nil {
+			err = os.Remove(absPath)
+		}
+		if err != nil {
+			log.Printf("Unable to cleanup file %v. %v\n", absPath, err)
+		}
 	}
 }
 
