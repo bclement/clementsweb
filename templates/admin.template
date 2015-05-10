@@ -45,7 +45,7 @@ placeholder="Role" />
 								</div>
 							</form>
                             {{ if .Status }}
-                            <p>{{.Status}}</p>
+                            <p style="color:red">{{.Status}}</p>
                             {{end}}
                         </section>
 				</div>

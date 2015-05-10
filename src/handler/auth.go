@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -71,6 +72,36 @@ UserInfo is used to store authorization info in the database
 type UserInfo struct {
 	Email string
 	Roles []string
+}
+
+/*
+handleAuth performs generic authentication and authorization checks on a page.
+*/
+func handleAuth(w http.ResponseWriter, r *http.Request, loginPrompt, block *template.Template,
+	db *bolt.DB, pagedata map[string]interface{}, role, msg string) (bool, error) {
+
+	var login *LoginInfo
+	obj, ok := pagedata["Login"]
+	if ok {
+		login = obj.(*LoginInfo)
+	} else {
+		login = getLoginInfo(r)
+	}
+
+	rval := false
+	var err error
+
+	if !login.Authenticated() {
+		err = loginPrompt.Execute(w, pagedata)
+	} else if !HasRole(db, login.Email, role) {
+		/* TODO send code 403 forbidden */
+		pagedata["Message"] = msg
+		err = block.Execute(w, pagedata)
+	} else {
+		rval = true
+	}
+
+	return rval, err
 }
 
 /*

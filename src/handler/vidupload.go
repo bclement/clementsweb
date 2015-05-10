@@ -39,9 +39,8 @@ VideoUpload creates a new VideoUploadHandler
 func VideoUpload(db *bolt.DB, webroot string) *Wrapper {
 
 	/* TODO blocked and login templates should be shared */
-	/* TODO block should be generic with description passed in */
-	block := CreateTemplate(webroot, "base.html", "vidblock.template")
-	login := CreateTemplate(webroot, "base.html", "vidlogin.template")
+	block := CreateTemplate(webroot, "base.html", "block.template")
+	login := CreateTemplate(webroot, "base.html", "login.template")
 	upload := CreateTemplate(webroot, "base.html", "vidupload.template")
 	notifyTemplateFile := webroot + "templates/notification.template"
 	notify, err := txtemplate.ParseFiles(notifyTemplateFile)
@@ -55,56 +54,43 @@ func VideoUpload(db *bolt.DB, webroot string) *Wrapper {
 see AppHandler interface
 */
 func (h VideoUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
-
 	pagedata map[string]interface{}) *AppError {
 
-	var login *LoginInfo
-	obj, ok := pagedata["Login"]
-	if ok {
-		login = obj.(*LoginInfo)
-	} else {
-		login = getLoginInfo(r)
-	}
-
 	var err *AppError
-	var templateErr error
 
-	if !login.Authenticated() {
-		templateErr = h.loginTemplate.Execute(w, pagedata)
-	} else if !HasRole(h.db, login.Email, "VidUploader") {
-		/* TODO send code 403 forbidden */
-		templateErr = h.blockedTemplate.Execute(w, pagedata)
-	} else if r.Method == "POST" {
-		var status string
+	authorized, templateErr := handleAuth(w, r, h.loginTemplate, h.blockedTemplate,
+		h.db, pagedata, "VidUploader", "")
+	if authorized && templateErr == nil {
+		if r.Method == "POST" {
+			var status string
 
-		title := r.FormValue("title")
-		if title == "" {
-			status = "Title cannot be empty"
-		}
-		desc := r.FormValue("description")
-		vname, tname, vfile, tfile, readingErr := readFiles(r)
-		if readingErr == nil && status == "" {
-			/* TODO this is a lame way of checking file type */
-			if !strings.HasSuffix(vname, "webm") {
-				status = "Video must be a webm file"
-			} else if !strings.HasSuffix(tname, "jpg") {
-				status = "Thumbnail must be a jpg file"
-			} else {
-				status = h.process(title, desc, vname, tname, vfile, tfile)
+			title := r.FormValue("title")
+			if title == "" {
+				status = "Title cannot be empty"
 			}
-		} else if readingErr == http.ErrMissingFile {
-			status = "Both file and thumbnail are required"
-		} else if err != nil {
-			err = &AppError{readingErr, "Unable to read file", http.StatusBadRequest}
+			desc := r.FormValue("description")
+			vname, tname, vfile, tfile, readingErr := readFiles(r)
+			if readingErr == nil && status == "" {
+				/* TODO this is a lame way of checking file type */
+				if !strings.HasSuffix(vname, "webm") {
+					status = "Video must be a webm file"
+				} else if !strings.HasSuffix(tname, "jpg") {
+					status = "Thumbnail must be a jpg file"
+				} else {
+					status = h.process(title, desc, vname, tname, vfile, tfile)
+				}
+			} else if readingErr == http.ErrMissingFile {
+				status = "Both file and thumbnail are required"
+			} else if err != nil {
+				err = &AppError{readingErr, "Unable to read file", http.StatusBadRequest}
+			}
+			pagedata["Status"] = status
 		}
-		pagedata["Status"] = status
+		templateErr = h.uploadTemplate.Execute(w, pagedata)
 	}
 
-	if err == nil {
-		templateErr = h.uploadTemplate.Execute(w, pagedata)
-		if templateErr != nil {
-			log.Printf("Problem rendering %v\n", templateErr)
-		}
+	if templateErr != nil {
+		log.Printf("Problem rendering %v\n", templateErr)
 	}
 
 	return err

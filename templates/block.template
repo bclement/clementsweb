@@ -1,4 +1,4 @@
-{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "title" }}<title>clementscode</title>{{ end }}
 {{ define "body-class" }}{{ end }}
 
 {{ define "content" }}
@@ -10,12 +10,12 @@
 						<h3>Not Authorized</h3>
 						<p>User account {{.Login.Email}} is not allowed to view content.</p>
 					</header>
+                    {{ if .Message }}
 					<!-- Text -->
 						<section>
-							<p>These videos are home movies. Only friends and family have access
-to view them. If you would like to request access, please contact Brian and he will add you to
-the access list. Thanks!</p>
+							<p>{{.Message}}</p>
                         </section>
+                    {{end}}
 				</div>
 			</section>
 {{ end }}

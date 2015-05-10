@@ -26,8 +26,8 @@ func VideoSub(db *bolt.DB, webroot string) *Wrapper {
 
 	/* TODO blocked and login templates should be shared */
 	/* TODO block should be generic with description passed in */
-	block := CreateTemplate(webroot, "base.html", "vidblock.template")
-	login := CreateTemplate(webroot, "base.html", "vidlogin.template")
+	block := CreateTemplate(webroot, "base.html", "block.template")
+	login := CreateTemplate(webroot, "base.html", "login.template")
 	sub := CreateTemplate(webroot, "base.html", "vidsub.template")
 	return &Wrapper{VideoSubHandler{login, block, sub, db}}
 }

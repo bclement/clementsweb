@@ -11,6 +11,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	AUTH_MSG = `These videos are home movies. Only friends and family have access
+to view them. If you would like to request access, please contact Brian and he will add you to
+the access list. Thanks!`
+)
+
 /*
 VideoHandler handles requests to the videos page
 */
@@ -27,8 +33,8 @@ type VideoHandler struct {
 Videos creates a new VideoHandler
 */
 func Videos(db *bolt.DB, webroot string) *Wrapper {
-	block := CreateTemplate(webroot, "base.html", "vidblock.template")
-	login := CreateTemplate(webroot, "base.html", "vidlogin.template")
+	block := CreateTemplate(webroot, "base.html", "block.template")
+	login := CreateTemplate(webroot, "base.html", "login.template")
 	player := CreateTemplate(webroot, "base.html", "vidplayer.template")
 	list := CreateTemplate(webroot, "base.html", "vidlist.template")
 	return &Wrapper{VideoHandler{login, block, player, list, db, webroot}}
@@ -98,23 +104,11 @@ see AppHandler interface
 func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request,
 	pagedata map[string]interface{}) *AppError {
 
-	var login *LoginInfo
-	obj, ok := pagedata["Login"]
-	if ok {
-		login = obj.(*LoginInfo)
-	} else {
-		login = getLoginInfo(r)
-	}
-
 	var err *AppError
-	var templateErr error
 
-	if !login.Authenticated() {
-		templateErr = h.loginTemplate.Execute(w, pagedata)
-	} else if !HasRole(h.db, login.Email, "VidWatcher") {
-		/* TODO send code 403 forbidden */
-		templateErr = h.blockedTemplate.Execute(w, pagedata)
-	} else {
+	authorized, templateErr := handleAuth(w, r, h.loginTemplate, h.blockedTemplate,
+		h.db, pagedata, "VidWatcher", AUTH_MSG)
+	if authorized && templateErr == nil {
 		err = h.serve(w, r, pagedata)
 	}
 	if templateErr != nil {

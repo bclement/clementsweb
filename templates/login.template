@@ -1,4 +1,4 @@
-{{ define "title" }}<title>clementscode: videos</title>{{ end }}
+{{ define "title" }}<title>clementscode</title>{{ end }}
 {{ define "body-class" }}{{ end }}
 
 {{ define "content" }}
@@ -8,7 +8,7 @@
 
 					<header class="major">
 						<h3>Not Authenticated</h3>
-						<p>Please login to see video content.</p>
+						<p>Please login to see content.</p>
 					</header>
 
 				</div>
