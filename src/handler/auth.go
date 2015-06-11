@@ -78,10 +78,10 @@ type UserInfo struct {
 handleAuth performs generic authentication and authorization checks on a page.
 */
 func handleAuth(w http.ResponseWriter, r *http.Request, loginPrompt, block *template.Template,
-	db *bolt.DB, pagedata map[string]interface{}, role, msg string) (bool, error) {
+	db *bolt.DB, data PageData, role, msg string) (bool, error) {
 
 	var login *LoginInfo
-	obj, ok := pagedata["Login"]
+	obj, ok := data["Login"]
 	if ok {
 		login = obj.(*LoginInfo)
 	} else {
@@ -92,11 +92,11 @@ func handleAuth(w http.ResponseWriter, r *http.Request, loginPrompt, block *temp
 	var err error
 
 	if !login.Authenticated() {
-		err = loginPrompt.Execute(w, pagedata)
+		err = loginPrompt.Execute(w, data)
 	} else if !HasRole(db, login.Email, role) {
 		/* TODO send code 403 forbidden */
-		pagedata["Message"] = msg
-		err = block.Execute(w, pagedata)
+		data["Message"] = msg
+		err = block.Execute(w, data)
 	} else {
 		rval = true
 	}

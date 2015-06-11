@@ -75,6 +75,7 @@ func main() {
 	vidSubHandler := handler.VideoSub(db, *webroot)
 	missingHandler := handler.Missing(*webroot)
 	adminHandler := handler.Admin(db, *webroot)
+	comicUploadHandler := handler.ComicUpload(db, *webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
@@ -83,6 +84,7 @@ func main() {
 	r.Handle("/resume/", resumeHandler)
 	r.Handle("/projects", projectsHandler)
 	r.Handle("/projects/", projectsHandler)
+	r.Handle("/comics/upload", comicUploadHandler)
 	r.Handle("/videos", handler.Redirect("videos/"))
 	r.Handle("/videos/", videosHandler)
 	r.Handle("/videos/upload", vidUploadHandler)

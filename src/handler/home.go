@@ -3,12 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/boltdb/bolt"
 	"html/template"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 func init() {
@@ -93,7 +94,7 @@ func getRandomQuote(db *bolt.DB) (*Quote, *AppError) {
 see AppHandler interface
 */
 func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	data PageData) *AppError {
 	quote, appErr := getRandomQuote(h.db)
 	if appErr != nil {
 		return appErr
@@ -102,8 +103,8 @@ func (h HomeHandler) Handle(w http.ResponseWriter, r *http.Request,
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 
-	pagedata["Quote"] = quote
+	data["Quote"] = quote
 
-	h.template.Execute(w, pagedata)
+	h.template.Execute(w, data)
 	return nil
 }

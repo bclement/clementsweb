@@ -36,7 +36,7 @@ func VideoSub(db *bolt.DB, webroot string) *Wrapper {
 see AppHandler interface
 */
 func (h VideoSubHandler) Handle(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	pagedata PageData) *AppError {
 
 	var login *LoginInfo
 	obj, ok := pagedata["Login"]

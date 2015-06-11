@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+type PageData map[string]interface{}
+
 /*
 HandlerFunc is a function type that fulfills the AppHandler interface
 */
@@ -15,7 +17,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request) *AppError
 see AppHandler interface
 */
 func (hf HandlerFunc) Handle(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	data PageData) *AppError {
 	return hf(w, r)
 }
 
@@ -24,7 +26,7 @@ type AppHandler interface {
 	   handles requests for a given page
 	   the map is a preloaded page data map that includes user login information
 	*/
-	Handle(http.ResponseWriter, *http.Request, map[string]interface{}) *AppError
+	Handle(http.ResponseWriter, *http.Request, PageData) *AppError
 }
 
 /*
@@ -48,9 +50,9 @@ ServeHTTP takes care of common handler tasks such as error handling
 */
 func (hw Wrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login := getLoginInfo(r)
-	pagedata := map[string]interface{}{"Login": login}
-	pagedata["PathInfo"] = r.URL.String()
-	if appErr := hw.Handler.Handle(w, r, pagedata); appErr != nil {
+	data := PageData{"Login": login}
+	data["PathInfo"] = r.URL.String()
+	if appErr := hw.Handler.Handle(w, r, data); appErr != nil {
 		if appErr.Err != nil {
 			log.Println(appErr.Err)
 		}
@@ -69,7 +71,7 @@ type GenericHandler struct {
 see AppHandler interface
 */
 func (h GenericHandler) Handle(w http.ResponseWriter, r *http.Request,
-	data map[string]interface{}) *AppError {
+	data PageData) *AppError {
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
 

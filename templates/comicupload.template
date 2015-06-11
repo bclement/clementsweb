@@ -1,0 +1,146 @@
+{{ define "title" }}<title>clementscode: comics</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3>Comic Upload</h3>
+                            {{ if .Status }}
+                            <p>{{.Status}}</p>
+                            {{end}}
+							<form method="post" enctype="multipart/form-data" action="upload">
+								<div class="row">
+									<div class="four colums">
+                                        <label>Cover</label>
+                                        <input type="file" name="cover" id="cover" value="" />
+                                    </div>
+									<div class="four colums">
+                                        <label>Date</label>
+                                        <input type="month" name="date" id="date"
+                                            value="{{.date}}" />
+                                    </div>
+									<div class="four columns">
+                                        <label>Publisher</label>
+										<div class="select-wrapper">
+											<select name="publisher" id="publisher">
+												<option value="Marvel">Marvel</option>
+												<option value="Dark Horse" 
+                                                    {{if .publisher}}
+                                                        {{if eq .publisher "Dark Horse"}}
+                                                        selected="true"
+                                                        {{end}}
+                                                    {{end}}
+                                                    >Dark Horse</option>
+											</select>
+										</div>
+                                    </div>
+                                </div>
+								<div class="row">
+									<div class="five columns">
+                                        <label>Title</label>
+                                        <input type="text" name="title" id="title" 
+                                            value="{{.title}}" placeholder="Title"/>
+                                    </div>
+									<div class="one column">
+                                        <label>Volume</label>
+                                        <input type="text" name="volume" id="volume" 
+                                            value="{{.volume}}" placeholder="Volume"/>
+                                    </div>
+									<div class="five columns">
+                                        <label>Subtitle</label>
+                                        <input type="text" name="subtitle" id="subtitle" 
+                                            value="{{.subtitle}}" placeholder="Subtitle"/>
+                                    </div>
+									<div class="one column">
+                                        <label>Issue</label>
+										<input type="text" name="issue" id="issue"
+                                            value="{{.issue}}" placeholder="Issue" />
+									</div>
+                                </div>
+								<div class="row">
+									<div class="two columns">
+                                        <label>Cover Id</label>
+										<input type="text" name="coverId" id="coverId" 
+                                            value="{{.coverId}}" placeholder="Cover Id" />
+									</div>
+									<div class="two columns">
+                                        <label>Cover Price</label>
+                                        <input type="text" name="coverPrice" id="coverPrice" 
+                                            value="{{.coverPrice}}" placeholder="Cover Price"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Author</label>
+                                        <input type="text" name="author" id="author" 
+                                            value="{{.author}}" placeholder="Author"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Cover Artist</label>
+										<input type="text" name="coverArtist" id="coverArtist" 
+                                            value="{{.coverArtist}}" placeholder="Cover Artist" />
+									</div>
+                                </div>
+								<div class="row">
+									<div class="four columns">
+                                        <label>Pencils</label>
+										<input type="text" name="pencils" id="pencils"
+                                            value="{{.pencils}}" placeholder="Pencils" />
+									</div>
+									<div class="four columns">
+                                        <label>Inks</label>
+                                        <input type="text" name="inks" id="inks" 
+                                            value="{{.inks}}" placeholder="Inks"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Colors</label>
+                                        <input type="text" name="colors" id="colors" 
+                                            value="{{.colors}}" placeholder="Colors"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Letters</label>
+                                        <input type="text" name="letters" id="letters" 
+                                            value="{{.letters}}" placeholder="Letters"/>
+                                    </div>
+                                </div>
+								<div class="row">
+									<div class="six columns">
+										<div class="select-wrapper">
+                                            <label>Grade</label>
+											<select name="grade" id="grade">
+												<option value="">- Grade -</option>
+												<option value="PR">Poor</option>
+												<option value="FR">Fair</option>
+												<option value="GD">Good</option>
+												<option value="VG">Very Good</option>
+												<option value="FN">Fine</option>
+												<option value="VF">Very Fine</option>
+												<option value="NM">Near Mint</option>
+											</select>
+										</div>
+                                    </div>
+									<div class="three columns">
+                                            <label>Value</label>
+										<input type="text" name="value" id="value"
+                                            value="{{.value}}" placeholder="Value" />
+									</div>
+									<div class="three columns">
+										<label >Signed</label>
+										<input type="checkbox" id="signed" name="signed" value="true">
+										<label for="checkbox"></label>
+									</div>
+                                </div>
+								<div class="row uniform 50%">
+									<div class="12u$">
+										<ul class="actions">
+											<li><input type="submit" value="Submit" class="special" /></li>
+											<li><input type="reset" value="Reset" /></li>
+										</ul>
+									</div>
+								</div>
+							</form>
+                            <a href="/comics">Back to comics</a>
+                        </section>
+				</div>
+			</section>
+{{ end }}

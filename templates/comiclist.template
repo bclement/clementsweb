@@ -1,0 +1,23 @@
+{{ define "title" }}<title>clementscode: comics</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+                    <ul class="flex-container wrap">
+                        {{range $comic := .Comics}}
+                        <li>
+                            <a href="comic?t={{$comic.Title}}&amp;v={{$comic.Vol}}
+                                    &amp;i={{$comic.Issue}}&amp;c={{$comic.CoverId}}">
+                                <img src="{{$comic.CoverPath}}" width="213" height="330">
+                            </a>
+                            <p>
+                                Title: {{$comic.Title}} Vol: {{$comic.Vol}}</br>
+                                Issue: {{$comic.Issue}} Cover: {{$comic.CoverId}}
+                            </p>
+                        </li>
+                        {{end}}
+                        </ul>
+            </section>
+{{ end }}

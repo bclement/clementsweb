@@ -2,13 +2,14 @@ package handler
 
 import (
 	"bufio"
-	"github.com/bclement/textgen"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/bclement/textgen"
 )
 
 /*
@@ -52,7 +53,7 @@ see http handler interface
 */
 func (h MissingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login := getLoginInfo(r)
-	pagedata := map[string]interface{}{"Login": login}
+	data := PageData{"Login": login}
 
 	headers := w.Header()
 	headers.Add("Content-Type", "text/html")
@@ -62,7 +63,7 @@ func (h MissingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Unable to generate text: %v\n", err)
 		text = "I can't think of anything at the moment..."
 	}
-	pagedata["Text"] = text
+	data["Text"] = text
 
-	h.template.Execute(w, pagedata)
+	h.template.Execute(w, data)
 }

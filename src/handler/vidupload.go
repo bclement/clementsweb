@@ -54,7 +54,7 @@ func VideoUpload(db *bolt.DB, webroot string) *Wrapper {
 see AppHandler interface
 */
 func (h VideoUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	pagedata PageData) *AppError {
 
 	var err *AppError
 
@@ -262,7 +262,7 @@ func writeFile(path string, src multipart.File) error {
 			if err == nil {
 				defer target.Close()
 				_, err = io.Copy(target, src)
-				if err != nil {
+				if err == nil {
 					err = target.Sync()
 				}
 			}

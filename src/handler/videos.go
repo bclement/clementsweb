@@ -102,7 +102,7 @@ func (vm *VidMap) ReverseKeys() []string {
 see AppHandler interface
 */
 func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	pagedata PageData) *AppError {
 
 	var err *AppError
 
@@ -122,7 +122,7 @@ func (h VideoHandler) Handle(w http.ResponseWriter, r *http.Request,
 serve handles authenticated and authorized requests
 */
 func (h VideoHandler) serve(w http.ResponseWriter, r *http.Request,
-	pagedata map[string]interface{}) *AppError {
+	pagedata PageData) *AppError {
 
 	var err *AppError
 	vars := mux.Vars(r)

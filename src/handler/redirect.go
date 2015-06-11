@@ -22,7 +22,7 @@ func Redirect(target string) *Wrapper {
 see AppHandler interface
 */
 func (h RedirectHandler) Handle(w http.ResponseWriter, r *http.Request,
-	data map[string]interface{}) *AppError {
+	data PageData) *AppError {
 	http.Redirect(w, r, h.target, 301)
 	return nil
 }
