@@ -12,16 +12,17 @@
                             {{end}}
 							<form method="post" enctype="multipart/form-data" action="upload">
 								<div class="row">
-									<div class="four colums">
-                                        <label>Cover</label>
-                                        <input type="file" name="cover" id="cover" value="" />
-                                    </div>
-									<div class="four colums">
+									<div class="three colums">
                                         <label>Date</label>
-                                        <input type="month" name="date" id="date"
-                                            value="{{.date}}" />
+                                        <input type="text" name="date" id="date"
+                                            value="{{.date}}" placeholder="Date"/>
                                     </div>
-									<div class="four columns">
+									<div class="three column">
+                                        <label>Chron Offset</label>
+                                        <input type="text" name="chronOffset" id="chronOffset" 
+                                            value="{{.chronOffset}}" placeholder="Chron Offset"/>
+                                    </div>
+									<div class="three columns">
                                         <label>Publisher</label>
 										<div class="select-wrapper">
 											<select name="publisher" id="publisher">
@@ -36,19 +37,23 @@
 											</select>
 										</div>
                                     </div>
+									<div class="three colums">
+                                        <label>Cover</label>
+                                        <input type="file" name="cover" id="cover" value="" />
+                                    </div>
                                 </div>
 								<div class="row">
-									<div class="five columns">
+									<div class="three column">
+                                        <label>Series Id</label>
+                                        <input type="text" name="seriesId" id="seriesId" 
+                                            value="{{.seriesId}}" placeholder="Series Id"/>
+                                    </div>
+									<div class="four columns">
                                         <label>Title</label>
                                         <input type="text" name="title" id="title" 
                                             value="{{.title}}" placeholder="Title"/>
                                     </div>
-									<div class="one column">
-                                        <label>Volume</label>
-                                        <input type="text" name="volume" id="volume" 
-                                            value="{{.volume}}" placeholder="Volume"/>
-                                    </div>
-									<div class="five columns">
+									<div class="four columns">
                                         <label>Subtitle</label>
                                         <input type="text" name="subtitle" id="subtitle" 
                                             value="{{.subtitle}}" placeholder="Subtitle"/>

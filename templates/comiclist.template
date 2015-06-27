@@ -5,19 +5,43 @@
 
 		<!-- Main -->
 			<section id="main" class="wrapper">
-                    <ul class="flex-container wrap">
-                        {{range $comic := .Comics}}
-                        <li>
-                            <a href="comic?t={{$comic.Title}}&amp;v={{$comic.Vol}}
-                                    &amp;i={{$comic.Issue}}&amp;c={{$comic.CoverId}}">
-                                <img src="{{$comic.CoverPath}}" width="213" height="330">
-                            </a>
-                            <p>
-                                Title: {{$comic.Title}} Vol: {{$comic.Vol}}</br>
-                                Issue: {{$comic.Issue}} Cover: {{$comic.CoverId}}
-                            </p>
-                        </li>
-                        {{end}}
-                        </ul>
+				<div class="container">
+<form action=".">
+  <input type="search" name="q" id="q"
+    {{if .query}}value="{{.query}}"{{end}} />
+  <input type="submit" value="search"/>
+</form>
+                    {{range $title := .Titles}}
+						<section>
+						    <h3>{{$title.Publisher}} {{$title.DisplayName}}</h3>
+							<div class="table-wrapper">
+								<table class="alt">
+									<thead>
+										<tr>
+											<th>Subtitle</th>
+											<th>Issue</th>
+											<th>Cover</th>
+											<th>Status</th>
+										</tr>
+									</thead>
+									<tbody>
+                                        {{range $comic:= $title.Comics}}
+										<tr>
+											<td>{{$comic.Subtitle}}</td>
+											<td>{{$comic.Issue}}</td>
+											<td>{{$comic.CoverId}}</td>
+                                            {{if $comic.Best}}
+											<td>{{$comic.Best.String}}</td>
+                                            {{else}}
+											<td style="color:red">missing</td>
+                                            {{end}}
+										</tr>
+                                        {{end}}
+									</tbody>
+								</table>
+							</div>
+						</section>
+                    {{end}}
+				</div>
             </section>
 {{ end }}

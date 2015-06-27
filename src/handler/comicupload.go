@@ -20,7 +20,17 @@ const (
 	COMIC_COL   = "comics"
 	COMIC_KEY   = "comic"
 	COMIC_INDEX = "_word_idx"
+	PUNC_RUNES  = ",.?;:!()&"
 )
+
+/* replacePunc returns space if rune is punctuation */
+func replacePunc(r rune) rune {
+	rval := r
+	if strings.ContainsRune(PUNC_RUNES, r) {
+		rval = ' '
+	}
+	return rval
+}
 
 var datePattern = regexp.MustCompile("^\\s*([0-9]{4})-([0-9]{2})\\s*$")
 var moneyPattern = regexp.MustCompile("^\\s*([0-9]+)(.([0-9]{2}))?\\s*$")
@@ -35,23 +45,36 @@ const (
 	NEAR_MINT = "NM"
 )
 
+var gradeRank = map[string]int{POOR: 0, FAIR: 1, GOOD: 2, VERY_GOOD: 3, FINE: 4, VERY_FINE: 5, NEAR_MINT: 6}
+
+/*
+Physical copy of comic book
+*/
 type Book struct {
 	Grade  string
 	Value  int
 	Signed bool
 }
 
+func (b *Book) String() string {
+	return b.Grade
+}
+
+/*
+Single issue of comic with unique cover
+*/
 type Comic struct {
 	CoverPath   string
 	Year        int
 	Month       int
 	Publisher   string
+	SeriesId    string
 	Title       string
 	Subtitle    string
-	Vol         int
 	Issue       int
 	CoverId     string
 	CoverPrice  int
+	ChronOffset int
 	Author      string
 	CoverArtist string
 	Pencils     string
@@ -61,15 +84,42 @@ type Comic struct {
 	Books       []Book
 }
 
+/*
+formatIssue formats issue number to be used as db key
+*/
+func formatIssue(issue int) string {
+	return fmt.Sprintf("%03d", issue)
+}
+
+/*
+createKey creats fully qualified database key for comic
+*/
 func (comic *Comic) createKey() (key [][]byte) {
-	key = append(key, []byte(comic.Publisher))
-	key = append(key, []byte(comic.Title))
-	volKey := fmt.Sprintf("%03d", comic.Vol)
-	key = append(key, []byte(volKey))
-	issueKey := fmt.Sprintf("%03d", comic.Issue)
-	key = append(key, []byte(issueKey))
+	key = append(key, []byte(comic.SeriesId))
+	key = append(key, []byte(formatIssue(comic.Issue)))
 	key = append(key, []byte(comic.CoverId))
 	return
+}
+
+/*
+Best returns the physical copy that is is the best condition
+*/
+func (comic *Comic) Best() *Book {
+	var rval *Book
+	bookCount := len(comic.Books)
+	if bookCount == 1 {
+		rval = &comic.Books[0]
+	} else if bookCount > 1 {
+		bestRank := -1
+		for i := range comic.Books {
+			rank, ok := gradeRank[comic.Books[i].Grade]
+			if ok && rank > bestRank {
+				rval = &comic.Books[i]
+				bestRank = rank
+			}
+		}
+	}
+	return rval
 }
 
 /*
@@ -150,24 +200,30 @@ func (h ComicUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 	return err
 }
 
+/*
+process reads the new comic data from the request and stores it in the db
+*/
 func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 	var status string
 	var comic Comic
 	var err error
 
-	comic.Publisher, status = processString(r, "publisher", status, data)
-	comic.Title, status = processString(r, "title", status, data)
-	comic.Vol, status = processInt(r, "volume", status, data)
+	comic.SeriesId, status = processString(r, "seriesId", status, data)
 	comic.Issue, status = processInt(r, "issue", status, data)
 	comic.CoverId, status = processString(r, "coverId", status, data)
 
 	key := comic.createKey()
-	comic, _, err = h.getComic(key)
+	existing, found, err := h.getComic(key)
 	if err != nil {
 		status = fmt.Sprintf("Can't lookup comic: %v", err.Error())
 		/* TODO keep going? */
+	} else if found {
+		comic = existing
 	}
 
+	comic.Publisher, status = processString(r, "publisher", status, data)
+	comic.Title, status = processString(r, "title", status, data)
+	comic.ChronOffset, status = processInt(r, "chronOffset", status, data)
 	comic.Year, comic.Month, status = processDate(r, "date", status, data)
 	comic.Subtitle, status = processString(r, "subtitle", status, data)
 	comic.CoverPrice, status = processMoney(r, "coverPrice", status, data)
@@ -203,6 +259,10 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 	return status
 }
 
+/*
+getComic returns the comic in the db matching the key.
+if no such comic exists in the db, found will be false
+*/
 func (h ComicUploadHandler) getComic(key [][]byte) (comic Comic, found bool, err error) {
 	found = false
 	terms := boltq.EqAll(key)
@@ -219,6 +279,9 @@ func (h ComicUploadHandler) getComic(key [][]byte) (comic Comic, found bool, err
 	return
 }
 
+/*
+storeComic stores the provided comic in the db usig the provided key
+*/
 func (h ComicUploadHandler) storeComic(key [][]byte, comic *Comic) error {
 	encoded, err := json.Marshal(comic)
 	if err == nil {
@@ -239,7 +302,11 @@ func (h ComicUploadHandler) storeComic(key [][]byte, comic *Comic) error {
 	return err
 }
 
+/*
+indexString breaks up the string into fields and uses it to populate a reverse index
+*/
 func (h ComicUploadHandler) indexString(str string, key [][]byte, err error) error {
+	str = strings.Map(replacePunc, str)
 	parts := strings.Fields(str)
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
@@ -253,6 +320,9 @@ func (h ComicUploadHandler) indexString(str string, key [][]byte, err error) err
 	return err
 }
 
+/*
+processCover reads in the cover image from the request and stores in on the file system
+*/
 func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPath, status string) {
 	formFile, headers, err := r.FormFile("cover")
 	if err != nil {
@@ -265,8 +335,7 @@ func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPa
 	}
 	dotIndex := strings.LastIndex(headers.Filename, ".")
 	ext := headers.Filename[dotIndex:]
-	/* TODO this assumes forward slash for file system */
-	dirName := fmt.Sprintf("%v_%v_%v", comic.Publisher, comic.Title, comic.Vol)
+	dirName := comic.SeriesId
 	fileName := fmt.Sprintf("%v_%v%v", comic.Issue, comic.CoverId, ext)
 	dirPath := filepath.Join("comics", "static", dirName)
 	absPath := filepath.Join(h.webroot, dirPath)
@@ -282,6 +351,10 @@ func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPa
 	return
 }
 
+/*
+processField reads a required field from the request using the callback function f. If the current
+status is not empty, it will be the returned status, otherwise any error will be used as the return status.
+*/
 func processField(r *http.Request, field, currStatus string, f func(string) string) (status string) {
 	text := r.FormValue(field)
 	if text == "" {
@@ -296,6 +369,9 @@ func processField(r *http.Request, field, currStatus string, f func(string) stri
 	return
 }
 
+/*
+processString is a callback function to be used with processField which gets a string value from the request
+*/
 func processString(r *http.Request, field, currStatus string, data PageData) (value, status string) {
 	status = processField(r, field, currStatus, func(text string) (status string) {
 		value = text
@@ -305,6 +381,9 @@ func processString(r *http.Request, field, currStatus string, data PageData) (va
 	return
 }
 
+/*
+processDate is a callback function to be used with processField which gets a date value from the request
+*/
 func processDate(r *http.Request, field, currStatus string, data PageData) (year, month int, status string) {
 	status = processField(r, field, currStatus, func(text string) (status string) {
 		groupSets := datePattern.FindAllStringSubmatch(text, -1)
@@ -324,10 +403,14 @@ func processDate(r *http.Request, field, currStatus string, data PageData) (year
 	return
 }
 
+/*
+processInt is a callback function to be used with processField which gets an integer value from the request
+*/
 func processInt(r *http.Request, field, currStatus string, data PageData) (value int, status string) {
 	status = processField(r, field, currStatus, func(text string) (status string) {
 		var err error
 		value, err = strconv.Atoi(text)
+		fmt.Printf("value %v text %v\n", value, text)
 		if err != nil {
 			status = fmt.Sprintf("Field %s must be an integer", field)
 		} else {
@@ -338,6 +421,9 @@ func processInt(r *http.Request, field, currStatus string, data PageData) (value
 	return
 }
 
+/*
+processMoney is a callback function to be used with processField which get a monetary value from the request
+*/
 func processMoney(r *http.Request, field, currStatus string, data PageData) (totalCents int, status string) {
 	status = processField(r, field, currStatus, func(text string) (status string) {
 		groupSets := moneyPattern.FindAllStringSubmatch(text, -1)
