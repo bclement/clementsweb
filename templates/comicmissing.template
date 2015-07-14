@@ -1,0 +1,81 @@
+{{ define "title" }}<title>clementscode: comics</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						    <h3>Missing Comics</h3>
+                            {{ if .Status }}
+                            <p>{{.Status}}</p>
+                            {{end}}
+                    {{range $title := .Titles}}
+						<section>
+                            <a href="{{$title.Path}}">
+						    <h3>{{$title.Publisher}} {{$title.DisplayName}}</h3>
+                            </a>
+                            <form method="POST" action="/comics/missing" id="{{$title.Path}}"></form>
+                            <div class="table-wrapper">
+                                <table class="alt">
+                                    <thead>
+                                        <tr>
+											<th>Subtitle</th>
+											<th>Issue</th>
+											<th>Cover</th>
+											<th>Notes</th>
+											<th>Grade</th>
+											<th>Value</th>
+											<th>Signed</th>
+											<th></th>
+                                        </tr>
+                                    </thead>
+                                <tbody>
+                                    {{range $comic:= $title.Comics}}
+                                    <tr>
+                                        <input form="{{$title.Path}}" type="hidden" 
+                                            name="seriesId" value="{{$comic.SeriesId}}"/>
+									    <td>{{$comic.Subtitle}}</td>
+                                        <input form="{{$title.Path}}" type="hidden" 
+                                            name="issue" value="{{$comic.Issue}}"/>
+										<td>{{$comic.Issue}}</td>
+                                        <input form="{{$title.Path}}" type="hidden" 
+                                            name="coverId" value="{{$comic.CoverId}}"/>
+										<td>{{$comic.CoverId}}</td>
+										<td>{{$comic.Notes}}</td>
+										<td>
+										    <select form="{{$title.Path}}" name="grade" id="grade">
+											    <option value="">- Grade -</option>
+											    <option value="PR">Poor</option>
+											    <option value="FR">Fair</option>
+											    <option value="GD">Good</option>
+											    <option value="VG">Very Good</option>
+											    <option value="FN">Fine</option>
+											    <option value="VF">Very Fine</option>
+											    <option value="NM">Near Mint</option>
+										    </select>
+                                        </td>
+										<td>
+									       <input form="{{$title.Path}}" type="text" name="value" id="value"
+                                                   placeholder="Value" />
+                                        </td>
+										<td>
+                                            <!-- TODO checkbox doesn't work in table -->
+									        <input form="{{$title.Path}}" type="text" 
+                                                id="signed" name="signed" value="">
+                                        </td>
+										<td>
+                                            <input form="{{$title.Path}}" type="submit" 
+                                                name="update" value="update" />
+                                        </td>
+                                     </tr>
+                                     {{end}}
+							    </tbody>
+						    </table>
+                            </div>
+						</section>
+                    {{end}}
+                            <a href="/comics">Back to comics</a>
+				</div>
+            </section>
+{{ end }}

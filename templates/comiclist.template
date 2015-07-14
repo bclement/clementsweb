@@ -13,7 +13,9 @@
 </form>
                     {{range $title := .Titles}}
 						<section>
+                            <a href="{{$title.Path}}">
 						    <h3>{{$title.Publisher}} {{$title.DisplayName}}</h3>
+                            </a>
 							<div class="table-wrapper">
 								<table class="alt">
 									<thead>
@@ -21,6 +23,7 @@
 											<th>Subtitle</th>
 											<th>Issue</th>
 											<th>Cover</th>
+											<th>Notes</th>
 											<th>Status</th>
 										</tr>
 									</thead>
@@ -30,6 +33,7 @@
 											<td>{{$comic.Subtitle}}</td>
 											<td>{{$comic.Issue}}</td>
 											<td>{{$comic.CoverId}}</td>
+											<td>{{$comic.Notes}}</td>
                                             {{if $comic.Best}}
 											<td>{{$comic.Best.String}}</td>
                                             {{else}}

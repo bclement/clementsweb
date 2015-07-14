@@ -11,6 +11,7 @@ import (
 
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/mux"
 )
 
 /*
@@ -99,6 +100,7 @@ ComicTitle groups comics in the same series that have the same title on the cove
 type ComicTitle struct {
 	Publisher   string
 	DisplayName string
+	Path        string
 	Comics      ComicList
 }
 
@@ -188,9 +190,10 @@ func (b ByChron) Less(i, j int) bool {
 ComicHandler handles requests to the comics page
 */
 type ComicHandler struct {
-	listTemplate *template.Template
-	ds           boltq.DataStore
-	webroot      string
+	listTemplate   *template.Template
+	seriesTemplate *template.Template
+	ds             boltq.DataStore
+	webroot        string
 }
 
 /*
@@ -198,8 +201,9 @@ Comics creates a new ComicHandler
 */
 func Comics(db *bolt.DB, webroot string) *Wrapper {
 	list := CreateTemplate(webroot, "base.html", "comiclist.template")
+	series := CreateTemplate(webroot, "base.html", "comicseries.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicHandler{list, ds, webroot}}
+	return &Wrapper{ComicHandler{list, series, ds, webroot}}
 }
 
 /*
@@ -210,21 +214,29 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 
 	var err *AppError
 	var templateErr error
-	/* TODO get query from request */
+	var template *template.Template
 	var q Query
-	qstring := r.FormValue("q")
-	if qstring == "" {
-		q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
+	vars := mux.Vars(r)
+	series, present := vars["series"]
+	if present {
+		template = h.seriesTemplate
+		q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Eq([]byte(series)))}
 	} else {
-		q = newIndexQuery(qstring)
-		pagedata["query"] = qstring
+		template = h.listTemplate
+		qstring := r.FormValue("q")
+		if qstring == "" {
+			q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
+		} else {
+			q = newIndexQuery(qstring)
+			pagedata["query"] = qstring
+		}
 	}
-	sl, e := h.getComics(q)
+	sl, e := getComics(h.ds, q)
 	if e == nil {
 		sort.Sort(ByRelease{sl})
 		titles := packageTitles(sl)
 		pagedata["Titles"] = titles
-		templateErr = h.listTemplate.Execute(w, pagedata)
+		templateErr = template.Execute(w, pagedata)
 	} else {
 		e = fmt.Errorf("Unable to get comics from db: %v", e)
 		err = &AppError{e, "Internal Server Error", http.StatusInternalServerError}
@@ -248,11 +260,11 @@ func packageTitles(sl SeriesList) (titles []ComicTitle) {
 		/* TODO this is only needed because of 1997 star wars,
 		it should be optimized for common case */
 		firstTitle := list[0].Title
-		currTitle := ComicTitle{list[0].Publisher, seriesId, nil}
+		currTitle := ComicTitle{list[0].Publisher, seriesId, seriesId, nil}
 		for i := range list {
 			if firstTitle != list[i].Title {
 				titles = append(titles, currTitle)
-				currTitle = ComicTitle{list[i].Publisher, list[i].Title, nil}
+				currTitle = ComicTitle{list[i].Publisher, list[i].Title, seriesId, nil}
 			}
 			currTitle.Comics = append(currTitle.Comics, list[i])
 		}
@@ -264,9 +276,9 @@ func packageTitles(sl SeriesList) (titles []ComicTitle) {
 /*
 getComics executes a query for comics and populates a SeriesList with the results
 */
-func (h ComicHandler) getComics(query Query) (SeriesList, error) {
+func getComics(ds boltq.DataStore, query Query) (SeriesList, error) {
 	rval := NewSeriesList()
-	err := h.ds.View(func(tx *bolt.Tx) error {
+	err := ds.View(func(tx *bolt.Tx) error {
 		results, e := query.run(tx)
 		var comic Comic
 		for i := 0; e == nil && i < len(results); i += 1 {

@@ -81,6 +81,7 @@ type Comic struct {
 	Inks        string
 	Colors      string
 	Letters     string
+	Notes       string
 	Books       []Book
 }
 
@@ -213,7 +214,8 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 	comic.CoverId, status = processString(r, "coverId", status, data)
 
 	key := comic.createKey()
-	existing, found, err := h.getComic(key)
+	/* TODO this isn't safe for concurrent updates */
+	existing, found, err := getComic(h.ds, key)
 	if err != nil {
 		status = fmt.Sprintf("Can't lookup comic: %v", err.Error())
 		/* TODO keep going? */
@@ -233,6 +235,7 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 	comic.Inks, status = processString(r, "inks", status, data)
 	comic.Colors, status = processString(r, "colors", status, data)
 	comic.Letters, status = processString(r, "letters", status, data)
+	comic.Notes, status = processString(r, "notes", status, data)
 	comic.CoverPath, status = h.processCover(r, &comic)
 	if status == "" {
 		var book Book
@@ -248,6 +251,11 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 			err = h.storeComic(key, &comic)
 			if err != nil {
 				status = fmt.Sprintf("Unable to save comic: %v", err.Error())
+			} else {
+				missingErr := updateMissingIndex(h.ds, comic)
+				if missingErr != nil {
+					log.Printf("Problem updating missing index %v", missingErr)
+				}
 			}
 		}
 	}
@@ -263,16 +271,16 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 getComic returns the comic in the db matching the key.
 if no such comic exists in the db, found will be false
 */
-func (h ComicUploadHandler) getComic(key [][]byte) (comic Comic, found bool, err error) {
+func getComic(ds boltq.DataStore, key [][]byte) (comic Comic, found bool, err error) {
 	found = false
 	terms := boltq.EqAll(key)
 	query := boltq.NewQuery([]byte(COMIC_COL), terms...)
-	err = h.ds.View(func(tx *bolt.Tx) error {
+	err = ds.View(func(tx *bolt.Tx) error {
 		encoded, e := boltq.TxQuery(tx, query)
 		if encoded != nil && e == nil {
 			/* TODO report if dups found */
 			found = true
-			e = json.Unmarshal(encoded[0], comic)
+			e = json.Unmarshal(encoded[0], &comic)
 		}
 		return e
 	})
@@ -335,15 +343,15 @@ func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPa
 	}
 	dotIndex := strings.LastIndex(headers.Filename, ".")
 	ext := headers.Filename[dotIndex:]
-	dirName := comic.SeriesId
+	dirName := strings.Replace(comic.SeriesId, " ", "_", -1)
 	fileName := fmt.Sprintf("%v_%v%v", comic.Issue, comic.CoverId, ext)
-	dirPath := filepath.Join("comics", "static", dirName)
+	dirPath := filepath.Join("static", "comics", dirName)
 	absPath := filepath.Join(h.webroot, dirPath)
 	err = os.MkdirAll(absPath, 0700)
 	if err == nil {
 		cfilePath := filepath.Join(absPath, fileName)
 		err = writeFile(cfilePath, formFile)
-		coverPath = filepath.Join(dirPath, fileName)
+		coverPath = filepath.Join(dirName, fileName)
 	}
 	if err != nil {
 		status = err.Error()
@@ -410,7 +418,6 @@ func processInt(r *http.Request, field, currStatus string, data PageData) (value
 	status = processField(r, field, currStatus, func(text string) (status string) {
 		var err error
 		value, err = strconv.Atoi(text)
-		fmt.Printf("value %v text %v\n", value, text)
 		if err != nil {
 			status = fmt.Sprintf("Field %s must be an integer", field)
 		} else {

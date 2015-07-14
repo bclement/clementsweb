@@ -77,6 +77,7 @@ func main() {
 	adminHandler := handler.Admin(db, *webroot)
 	comicUploadHandler := handler.ComicUpload(db, *webroot)
 	comicHandler := handler.Comics(db, *webroot)
+	comicMissingHandler := handler.ComicsMissing(db, *webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
@@ -88,12 +89,14 @@ func main() {
 	r.Handle("/comics", handler.Redirect("comics/"))
 	r.Handle("/comics/", comicHandler)
 	r.Handle("/comics/upload", comicUploadHandler)
+	r.Handle("/comics/missing", comicMissingHandler)
+	r.Handle("/comics/{series:.*}", comicHandler)
 	r.Handle("/videos", handler.Redirect("videos/"))
 	r.Handle("/videos/", videosHandler)
 	r.Handle("/videos/upload", vidUploadHandler)
 	r.Handle("/videos/subscription", vidSubHandler)
 	r.Handle("/videos/{path:.*}", videosHandler)
-	r.Handle("/{prepath:.*}/static/{postpath:.*}", staticHandler)
+	r.Handle("/static/{path:.*}", staticHandler)
 	r.NotFoundHandler = missingHandler
 	handler.RegisterAuth(*auth, db, r, "http://clementscode.com")
 
