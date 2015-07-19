@@ -1,0 +1,45 @@
+{{ define "title" }}<title>clementscode: comics</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3>Totals</h3>
+							<div class="table-wrapper">
+								<table class="alt">
+									<thead>
+										<tr>
+											<th>SeriesId</th>
+											<th>Book Count</th>
+											<th>Value</th>
+										</tr>
+									</thead>
+									<tbody>
+                                        {{range $series := .SeriesTotals}}
+										<tr>
+											<td>{{$series.SeriesId}}</td>
+											<td>{{$series.Count}}</td>
+											<td>{{$series.FormatValue}}</td>
+										</tr>
+                                        {{end}}
+										<tr>
+											<td></td>
+											<td></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td>Total:</td>
+											<td>{{.TotalCount}}</td>
+											<td>{{.TotalValue}}</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
+                        <a href="/comics">Back to comics</a>
+				</div>
+            </section>
+{{ end }}

@@ -78,6 +78,7 @@ func main() {
 	comicUploadHandler := handler.ComicUpload(db, *webroot)
 	comicHandler := handler.Comics(db, *webroot)
 	comicMissingHandler := handler.ComicsMissing(db, *webroot)
+	comicTotalsHandler := handler.ComicsTotals(db, *webroot)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)
@@ -90,6 +91,7 @@ func main() {
 	r.Handle("/comics/", comicHandler)
 	r.Handle("/comics/upload", comicUploadHandler)
 	r.Handle("/comics/missing", comicMissingHandler)
+	r.Handle("/comics/totals", comicTotalsHandler)
 	r.Handle("/comics/{series:.*}", comicHandler)
 	r.Handle("/videos", handler.Redirect("videos/"))
 	r.Handle("/videos/", videosHandler)

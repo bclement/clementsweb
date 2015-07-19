@@ -17,7 +17,7 @@ const (
 )
 
 /*
-ComicHandler handles requests to the comics page
+ComicMissingHandler handles requests to the comics missing page
 */
 type ComicMissingHandler struct {
 	blockedTemplate *template.Template
@@ -69,6 +69,9 @@ func (h ComicMissingHandler) Handle(w http.ResponseWriter, r *http.Request,
 	return err
 }
 
+/*
+process handles entering a book for a comic when it is added to the collection
+*/
 func (h ComicMissingHandler) process(r *http.Request, data PageData) (status string) {
 
 	var comic Comic
@@ -106,6 +109,10 @@ func (h ComicMissingHandler) process(r *http.Request, data PageData) (status str
 				if missingErr != nil {
 					log.Printf("Problem updating missing index %v", missingErr)
 				}
+				totalsErr := updateComicTotals(h.ds, comic.SeriesId, book)
+				if totalsErr != nil {
+					log.Printf("Problem updating comic totals %v", totalsErr)
+				}
 			}
 			if err != nil {
 				status = fmt.Sprintf("Unable to save comic: %v", err.Error())
@@ -115,6 +122,9 @@ func (h ComicMissingHandler) process(r *http.Request, data PageData) (status str
 	return
 }
 
+/*
+updateMissingIndex updates the missing book index for the collection
+*/
 func updateMissingIndex(ds boltq.DataStore, comic Comic) (err error) {
 	compositeKey := comic.createKey()
 	serializedKey := boltq.SerializeComposite(compositeKey)
@@ -132,6 +142,9 @@ func updateMissingIndex(ds boltq.DataStore, comic Comic) (err error) {
 	return
 }
 
+/*
+findMissing finds all the comics that are known to exist but aren't in the collection
+*/
 func (h ComicMissingHandler) findMissing() ([]ComicTitle, error) {
 	queries, err := h.getQueries()
 	var sl SeriesList
@@ -147,6 +160,10 @@ func (h ComicMissingHandler) findMissing() ([]ComicTitle, error) {
 	return titles, err
 }
 
+/*
+queryForMissingComics executs the provided queries on the data store
+TODO this could be a generic query method
+*/
 func queryForMissingComics(ds boltq.DataStore, queries []*boltq.Query) (SeriesList, error) {
 	rval := NewSeriesList()
 	err := ds.View(func(tx *bolt.Tx) (err error) {
@@ -167,6 +184,9 @@ func queryForMissingComics(ds boltq.DataStore, queries []*boltq.Query) (SeriesLi
 	return rval, err
 }
 
+/*
+getQueries creates comic queries from the entries in the missing index
+*/
 func (h ComicMissingHandler) getQueries() (queries []*boltq.Query, err error) {
 	err = h.ds.View(func(tx *bolt.Tx) (err error) {
 		b := tx.Bucket([]byte(MISSING_COL))

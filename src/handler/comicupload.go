@@ -256,6 +256,10 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 				if missingErr != nil {
 					log.Printf("Problem updating missing index %v", missingErr)
 				}
+				totalsErr := updateComicTotals(h.ds, comic.SeriesId, book)
+				if totalsErr != nil {
+					log.Printf("Problem updating comic totals %v", totalsErr)
+				}
 			}
 		}
 	}
