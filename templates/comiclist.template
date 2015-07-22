@@ -31,7 +31,10 @@
                                         {{range $comic:= $title.Comics}}
 										<tr>
 											<td>{{$comic.Subtitle}}</td>
-											<td>{{$comic.Issue}}</td>
+                                            <td>
+                                            <a href="{{$title.Path}}/{{$comic.Issue}}">
+											{{$comic.Issue}}</a>
+                                            </td>
 											<td>{{$comic.CoverId}}</td>
 											<td>{{$comic.Notes}}</td>
                                             {{if $comic.Best}}

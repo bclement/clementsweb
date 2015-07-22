@@ -5,21 +5,25 @@
 
 		<!-- Main -->
 			<section id="main" class="wrapper">
-				<div class="container">
                     {{range $title := .Titles}}
 						<section>
-						    <h3>{{$title.Publisher}} {{$title.DisplayName}}</h3>
+						    <h3 style="padding-left:100px;">
+                               {{$title.Publisher}} {{$title.DisplayName}}
+                            </h3>
+							<ul class="flex-container wrap">
                             {{range $comic:= $title.Comics}}
-							<div class="row">
-								<div class="9u 12u(3)">
+								<li>
                                     <!-- TODO link/sizing -->
-                                    <img src="/static/comics/{{$comic.CoverPath}}"/>
-								</div>
-								<div class="3u 12u(3)">
+                                    <img width="400" 
+                                        src="/static/comics/{{$comic.CoverPath}}"/>
+                                    <div style="width:290px; max-width:290px; 
+                                        word-wrap:break-word; float:right;margin: 10px">
                                     <p>
                                         Published: {{$comic.Year}}-{{$comic.Month}}<br/>
                                         Subtitle: {{$comic.Subtitle}}<br/>
+                                        <a href="./{{$comic.SeriesId}}/{{$comic.Issue}}">
                                         Issue #: {{$comic.Issue}}<br/>
+                                        </a>
                                         Cover ID: {{$comic.CoverId}}<br/>
                                         <!-- TODO currency formatting -->
                                         Cover Price: {{$comic.CoverPrice}}<br/>
@@ -34,11 +38,11 @@
                                         Notes: {{$comic.Notes}}<br/>
                                         <!-- TODO book summary -->
                                     </p>
-								</div>
-							</div>
+                                    </div>
+								</li>
                             {{end}}
+							</ul>
 						</section>
                     {{end}}
-				</div>
             </section>
 {{ end }}

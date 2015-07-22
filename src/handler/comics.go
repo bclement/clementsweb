@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bclement/boltq"
@@ -217,10 +218,24 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 	var template *template.Template
 	var q Query
 	vars := mux.Vars(r)
-	series, present := vars["series"]
-	if present {
+	series, seriesPresent := vars["series"]
+	issueStr, issuePresent := vars["issue"]
+	if seriesPresent {
+		fmt.Printf("series: %v\n", series)
 		template = h.seriesTemplate
-		q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Eq([]byte(series)))}
+		terms := []*boltq.Term{boltq.Eq([]byte(series))}
+		if issuePresent {
+			/* convert to number to ensure key is formatted */
+			issue, issueErr := strconv.Atoi(issueStr)
+			if issueErr == nil {
+				/* if there was an error, it wasn't a valid issue,
+				and we won't find anything in the query */
+				issueStr = formatIssue(issue)
+			}
+			fmt.Printf("issue: %v\n", issueStr)
+			terms = append(terms, boltq.Eq([]byte(issueStr)))
+		}
+		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
 	} else {
 		template = h.listTemplate
 		qstring := r.FormValue("q")
