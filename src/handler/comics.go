@@ -85,7 +85,11 @@ func (cl ComicList) Len() int {
 see Sort interface
 */
 func (cl ComicList) Less(i, j int) bool {
-	return cl[i].Issue < cl[j].Issue
+	if cl[i].Issue == cl[j].Issue {
+		return cl[i].CoverId < cl[j].CoverId
+	} else {
+		return cl[i].Issue < cl[j].Issue
+	}
 }
 
 /*

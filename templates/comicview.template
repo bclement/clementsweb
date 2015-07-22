@@ -1,0 +1,154 @@
+{{ define "title" }}<title>clementscode: comics</title>{{ end }}
+{{ define "body-class" }}{{ end }}
+
+{{ define "content" }}
+
+		<!-- Main -->
+			<section id="main" class="wrapper">
+				<div class="container">
+						<section>
+						    <h3 >
+                               {{.Comic.Publisher}} {{.Comic.Title}}
+                            </h3>
+                                <div>
+                                    <img width="400" 
+                                        src="/static/comics/{{.Comic.CoverPath}}"/>
+                                    <div style="width:290px; max-width:290px; 
+                                        word-wrap:break-word; float:right;margin: 10px">
+                                    <p>
+                                        Published: {{.Comic.FormatDate}}<br/>
+                                        Subtitle: {{.Comic.Subtitle}}<br/>
+                                        <a href="./{{.Comic.SeriesId}}/{{.Comic.Issue}}">
+                                        Issue #: {{.Comic.Issue}}<br/>
+                                        </a>
+                                        Cover ID: {{.Comic.CoverId}}<br/>
+                                        Cover Price: {{.Comic.FormatCoverPrice}}<br/>
+                                        <!-- TODO chron formatting -->
+                                        Story Date: {{.Comic.ChronOffset}}<br/>
+                                        Author: {{.Comic.Author}}<br/>
+                                        Cover Artist: {{.Comic.CoverArtist}}<br/>
+                                        Pencils: {{.Comic.Pencils}}<br/>
+                                        Inks: {{.Comic.Inks}}<br/>
+                                        Colors: {{.Comic.Colors}}<br/>
+                                        Letters: {{.Comic.Letters}}<br/>
+                                        Notes: {{.Comic.Notes}}<br/>
+                                    </p>
+                                    </div>
+                                </div>
+						</section>
+                            {{if .Uploader}}
+						<section>
+						    <h3>Comic Update</h3>
+                            {{ if .Status }}
+                            <p>{{.Status}}</p>
+                            {{end}}
+							<form method="post" enctype="multipart/form-data"
+                                action="{{.Comic.CoverId}}">
+
+                                <input type="hidden" name="seriesId"
+                                    value="{{.Comic.SeriesId}}"/>
+                                <input type="hidden" name="issue"
+                                    value="{{.Comic.Issue}}"/>
+                                <input type="hidden" name="coverId"
+                                    value="{{.Comic.CoverId}}"/>
+								<div class="row">
+									<div class="three colums">
+                                        <label>Date</label>
+                                        <input type="text" name="date" id="date"
+                                            value="{{.Comic.FormatDate}}" placeholder="Date"/>
+                                    </div>
+									<div class="three column">
+                                        <label>Chron Offset</label>
+                                        <input type="text" name="chronOffset" id="chronOffset" 
+                                            value="{{.Comic.ChronOffset}}" placeholder="Chron Offset"/>
+                                    </div>
+									<div class="three columns">
+                                        <label>Publisher</label>
+										<div class="select-wrapper">
+											<select name="publisher" id="publisher">
+												<option value="Marvel">Marvel</option>
+												<option value="Dark Horse" 
+                                                    {{if .publisher}}
+                                                        {{if eq .Comic.Publisher "Dark Horse"}}
+                                                        selected="true"
+                                                        {{end}}
+                                                    {{end}}
+                                                    >Dark Horse</option>
+											</select>
+										</div>
+                                    </div>
+									<div class="three colums">
+                                        <label>Cover</label>
+                                        <input type="file" name="cover" id="cover" value="" />
+                                    </div>
+                                </div>
+								<div class="row">
+									<div class="four columns">
+                                        <label>Title</label>
+                                        <input type="text" name="title" id="title" 
+                                            value="{{.Comic.Title}}" placeholder="Title"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Subtitle</label>
+                                        <input type="text" name="subtitle" id="subtitle" 
+                                            value="{{.Comic.Subtitle}}" placeholder="Subtitle"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Cover Price</label>
+                                        <input type="text" name="coverPrice" id="coverPrice" 
+                                            value="{{.Comic.FormatCoverPrice}}" placeholder="Cover Price"/>
+                                    </div>
+                                </div>
+								<div class="row">
+									<div class="four columns">
+                                        <label>Author</label>
+                                        <input type="text" name="author" id="author" 
+                                            value="{{.Comic.Author}}" placeholder="Author"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Cover Artist</label>
+										<input type="text" name="coverArtist" id="coverArtist" 
+                                            value="{{.Comic.CoverArtist}}" placeholder="Cover Artist" />
+									</div>
+									<div class="four columns">
+                                        <label>Notes</label>
+                                        <input type="text" name="notes" id="notes" 
+                                            value="{{.Comic.Notes}}" placeholder="Notes"/>
+                                    </div>
+                                </div>
+								<div class="row">
+									<div class="four columns">
+                                        <label>Pencils</label>
+										<input type="text" name="pencils" id="pencils"
+                                            value="{{.Comic.Pencils}}" placeholder="Pencils" />
+									</div>
+									<div class="four columns">
+                                        <label>Inks</label>
+                                        <input type="text" name="inks" id="inks" 
+                                            value="{{.Comic.Inks}}" placeholder="Inks"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Colors</label>
+                                        <input type="text" name="colors" id="colors" 
+                                            value="{{.Comic.Colors}}" placeholder="Colors"/>
+                                    </div>
+									<div class="four columns">
+                                        <label>Letters</label>
+                                        <input type="text" name="letters" id="letters" 
+                                            value="{{.Comic.Letters}}" placeholder="Letters"/>
+                                    </div>
+                                </div>
+								<div class="row uniform 50%">
+									<div class="12u$">
+										<ul class="actions">
+											<li><input type="submit" value="Submit" class="special" /></li>
+											<li><input type="reset" value="Reset" /></li>
+										</ul>
+									</div>
+								</div>
+							</form>
+                        </section>
+                    {{end}}
+                </div>
+            </section>
+{{ end }}

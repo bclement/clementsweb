@@ -35,7 +35,10 @@
                                             <a href="{{$title.Path}}/{{$comic.Issue}}">
 											{{$comic.Issue}}</a>
                                             </td>
-											<td>{{$comic.CoverId}}</td>
+                                            <td>
+                              <a href="{{$title.Path}}/{{$comic.Issue}}/{{$comic.CoverId}}">
+											{{$comic.CoverId}}</a>
+                                            </td>
 											<td>{{$comic.Notes}}</td>
                                             {{if $comic.Best}}
 											<td>{{$comic.Best.String}}</td>

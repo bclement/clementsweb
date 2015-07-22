@@ -33,7 +33,7 @@ func replacePunc(r rune) rune {
 }
 
 var datePattern = regexp.MustCompile("^\\s*([0-9]{4})-([0-9]{2})\\s*$")
-var moneyPattern = regexp.MustCompile("^\\s*([0-9]+)(.([0-9]{2}))?\\s*$")
+var moneyPattern = regexp.MustCompile("^\\s*\\$?\\s*([0-9]+)(.([0-9]{2}))?\\s*$")
 
 const (
 	POOR      = "PR"
@@ -58,6 +58,10 @@ type Book struct {
 
 func (b *Book) String() string {
 	return b.Grade
+}
+
+func (b *Book) FormatValue() string {
+	return FormatCurrency(b.Value)
 }
 
 /*
@@ -102,6 +106,14 @@ func (comic *Comic) createKey() (key [][]byte) {
 	return
 }
 
+func (comic *Comic) FormatDate() string {
+	return fmt.Sprintf("%d-%02d", comic.Year, comic.Month)
+}
+
+func (comic *Comic) FormatCoverPrice() string {
+	return FormatCurrency(comic.CoverPrice)
+}
+
 /*
 Best returns the physical copy that is is the best condition
 */
@@ -132,7 +144,6 @@ type ComicUploadHandler struct {
 	uploadTemplate  *template.Template
 	ds              boltq.DataStore
 	webroot         string
-	stopWords       map[string]bool
 }
 
 /*
@@ -144,36 +155,42 @@ func ComicUpload(db *bolt.DB, webroot string) *Wrapper {
 	login := CreateTemplate(webroot, "base.html", "login.template")
 	upload := CreateTemplate(webroot, "base.html", "comicupload.template")
 	ds := boltq.DataStore{db}
-	stopWords := loadStopWords(ds)
-	return &Wrapper{ComicUploadHandler{login, block, upload, ds, webroot, stopWords}}
+	return &Wrapper{ComicUploadHandler{login, block, upload, ds, webroot}}
 }
 
-/*
-loadStopWords gets a list of words that should be ignored by the search index
-*/
-func loadStopWords(ds boltq.DataStore) map[string]bool {
-	rval := make(map[string]bool)
-	var words []string
+var _stopWords map[string]bool
 
-	err := ds.View(func(tx *bolt.Tx) error {
-		var err error
-		b := tx.Bucket([]byte("text-index"))
-		if b != nil {
-			encoded := b.Get([]byte("stop-words"))
-			if encoded != nil {
-				err = json.Unmarshal(encoded, &words)
-			}
-		}
-		return err
-	})
-	if err != nil {
-		log.Printf("Problem reading stop words from db: %v", err)
+/*
+getStopWords gets a list of words that should be ignored by the search index
+*/
+func getStopWords(ds boltq.DataStore) map[string]bool {
+	if _stopWords != nil {
+		return _stopWords
 	} else {
-		for _, word := range words {
-			rval[word] = true
+		rval := make(map[string]bool)
+		var words []string
+
+		err := ds.View(func(tx *bolt.Tx) error {
+			var err error
+			b := tx.Bucket([]byte("text-index"))
+			if b != nil {
+				encoded := b.Get([]byte("stop-words"))
+				if encoded != nil {
+					err = json.Unmarshal(encoded, &words)
+				}
+			}
+			return err
+		})
+		if err != nil {
+			log.Printf("Problem reading stop words from db: %v", err)
+		} else {
+			for _, word := range words {
+				rval[word] = true
+			}
+			_stopWords = rval
 		}
+		return rval
 	}
-	return rval
 }
 
 /*
@@ -188,7 +205,7 @@ func (h ComicUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 		h.ds.DB, data, "ComicUploader", "")
 	if authorized && templateErr == nil {
 		if r.Method == "POST" {
-			status := h.process(r, data)
+			status := processUpload(h.ds, h.webroot, r, data)
 			data["Status"] = status
 		}
 		templateErr = h.uploadTemplate.Execute(w, data)
@@ -204,7 +221,7 @@ func (h ComicUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 /*
 process reads the new comic data from the request and stores it in the db
 */
-func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
+func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data PageData) string {
 	var status string
 	var comic Comic
 	var err error
@@ -215,7 +232,7 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 
 	key := comic.createKey()
 	/* TODO this isn't safe for concurrent updates */
-	existing, found, err := getComic(h.ds, key)
+	existing, found, err := getComic(ds, key)
 	if err != nil {
 		status = fmt.Sprintf("Can't lookup comic: %v", err.Error())
 		/* TODO keep going? */
@@ -236,7 +253,7 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 	comic.Colors, status = processString(r, "colors", status, data)
 	comic.Letters, status = processString(r, "letters", status, data)
 	comic.Notes, status = processString(r, "notes", status, data)
-	comic.CoverPath, status = h.processCover(r, &comic)
+	comic.CoverPath, status = processCover(webroot, r, &comic)
 	if status == "" {
 		var book Book
 		/* TODO validate grade value? */
@@ -248,15 +265,15 @@ func (h ComicUploadHandler) process(r *http.Request, data PageData) string {
 			comic.Books = append(comic.Books, book)
 		}
 		if status == "" {
-			err = h.storeComic(key, &comic)
+			err = storeComic(ds, key, &comic)
 			if err != nil {
 				status = fmt.Sprintf("Unable to save comic: %v", err.Error())
 			} else {
-				missingErr := updateMissingIndex(h.ds, comic)
+				missingErr := updateMissingIndex(ds, comic)
 				if missingErr != nil {
 					log.Printf("Problem updating missing index %v", missingErr)
 				}
-				totalsErr := updateComicTotals(h.ds, comic.SeriesId, book)
+				totalsErr := updateComicTotals(ds, comic.SeriesId, book)
 				if totalsErr != nil {
 					log.Printf("Problem updating comic totals %v", totalsErr)
 				}
@@ -294,21 +311,21 @@ func getComic(ds boltq.DataStore, key [][]byte) (comic Comic, found bool, err er
 /*
 storeComic stores the provided comic in the db usig the provided key
 */
-func (h ComicUploadHandler) storeComic(key [][]byte, comic *Comic) error {
+func storeComic(ds boltq.DataStore, key [][]byte, comic *Comic) error {
 	encoded, err := json.Marshal(comic)
 	if err == nil {
-		err = h.ds.Store([]byte(COMIC_COL), key, encoded)
+		err = ds.Store([]byte(COMIC_COL), key, encoded)
 	}
 
 	if err == nil {
-		err = h.indexString(comic.Title, key, err)
-		err = h.indexString(comic.Subtitle, key, err)
-		err = h.indexString(comic.Author, key, err)
-		err = h.indexString(comic.CoverArtist, key, err)
-		err = h.indexString(comic.Pencils, key, err)
-		err = h.indexString(comic.Inks, key, err)
-		err = h.indexString(comic.Colors, key, err)
-		err = h.indexString(comic.Letters, key, err)
+		err = indexString(ds, comic.Title, key, err)
+		err = indexString(ds, comic.Subtitle, key, err)
+		err = indexString(ds, comic.Author, key, err)
+		err = indexString(ds, comic.CoverArtist, key, err)
+		err = indexString(ds, comic.Pencils, key, err)
+		err = indexString(ds, comic.Inks, key, err)
+		err = indexString(ds, comic.Colors, key, err)
+		err = indexString(ds, comic.Letters, key, err)
 	}
 
 	return err
@@ -317,16 +334,17 @@ func (h ComicUploadHandler) storeComic(key [][]byte, comic *Comic) error {
 /*
 indexString breaks up the string into fields and uses it to populate a reverse index
 */
-func (h ComicUploadHandler) indexString(str string, key [][]byte, err error) error {
+func indexString(ds boltq.DataStore, str string, key [][]byte, err error) error {
 	str = strings.Map(replacePunc, str)
 	parts := strings.Fields(str)
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
+	stopWords := getStopWords(ds)
 	for i := 0; err == nil && i < len(parts); i += 1 {
 		lower := strings.ToLower(parts[i])
-		_, isStopWord := h.stopWords[lower]
+		_, isStopWord := stopWords[lower]
 		if !isStopWord {
-			err = h.ds.Index(col, idx, []byte(lower), key)
+			err = ds.Index(col, idx, []byte(lower), key)
 		}
 	}
 	return err
@@ -335,11 +353,15 @@ func (h ComicUploadHandler) indexString(str string, key [][]byte, err error) err
 /*
 processCover reads in the cover image from the request and stores in on the file system
 */
-func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPath, status string) {
+func processCover(webroot string, r *http.Request, comic *Comic) (coverPath, status string) {
 	formFile, headers, err := r.FormFile("cover")
 	if err != nil {
 		if err == http.ErrMissingFile {
-			status = "Missing cover file"
+			if comic.CoverPath == "" {
+				status = "Missing cover file"
+			} else {
+				coverPath = comic.CoverPath
+			}
 		} else {
 			status = fmt.Sprintf("Unable to save cover: %v", err.Error())
 		}
@@ -350,7 +372,7 @@ func (h ComicUploadHandler) processCover(r *http.Request, comic *Comic) (coverPa
 	dirName := strings.Replace(comic.SeriesId, " ", "_", -1)
 	fileName := fmt.Sprintf("%v_%v%v", comic.Issue, comic.CoverId, ext)
 	dirPath := filepath.Join("static", "comics", dirName)
-	absPath := filepath.Join(h.webroot, dirPath)
+	absPath := filepath.Join(webroot, dirPath)
 	err = os.MkdirAll(absPath, 0700)
 	if err == nil {
 		cfilePath := filepath.Join(absPath, fileName)

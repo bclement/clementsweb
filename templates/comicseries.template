@@ -19,14 +19,15 @@
                                     <div style="width:290px; max-width:290px; 
                                         word-wrap:break-word; float:right;margin: 10px">
                                     <p>
-                                        Published: {{$comic.Year}}-{{$comic.Month}}<br/>
+                                        Published: {{$comic.FormatDate}}<br/>
                                         Subtitle: {{$comic.Subtitle}}<br/>
-                                        <a href="./{{$comic.SeriesId}}/{{$comic.Issue}}">
+                                        <a href="/comics/{{$comic.SeriesId}}/{{$comic.Issue}}">
                                         Issue #: {{$comic.Issue}}<br/>
                                         </a>
+                      <a href="/comics/{{$comic.SeriesId}}/{{$comic.Issue}}/{{$comic.CoverId}}">
                                         Cover ID: {{$comic.CoverId}}<br/>
-                                        <!-- TODO currency formatting -->
-                                        Cover Price: {{$comic.CoverPrice}}<br/>
+                                        </a>
+                                        Cover Price: {{$comic.FormatCoverPrice}}<br/>
                                         <!-- TODO chron formatting -->
                                         Story Date: {{$comic.ChronOffset}}<br/>
                                         Author: {{$comic.Author}}<br/>
