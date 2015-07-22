@@ -221,7 +221,6 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 	series, seriesPresent := vars["series"]
 	issueStr, issuePresent := vars["issue"]
 	if seriesPresent {
-		fmt.Printf("series: %v\n", series)
 		template = h.seriesTemplate
 		terms := []*boltq.Term{boltq.Eq([]byte(series))}
 		if issuePresent {
@@ -232,7 +231,6 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 				and we won't find anything in the query */
 				issueStr = formatIssue(issue)
 			}
-			fmt.Printf("issue: %v\n", issueStr)
 			terms = append(terms, boltq.Eq([]byte(issueStr)))
 		}
 		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
