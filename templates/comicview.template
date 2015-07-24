@@ -7,14 +7,12 @@
 			<section id="main" class="wrapper">
 				<div class="container">
 						<section>
+                                    <img width="400" style="float:right;"
+                                        src="/static/comics/{{.Comic.CoverPath}}"/>
 						    <h3 >
                                {{.Comic.Publisher}} {{.Comic.Title}}
                             </h3>
                                 <div>
-                                    <img width="400" 
-                                        src="/static/comics/{{.Comic.CoverPath}}"/>
-                                    <div style="width:290px; max-width:290px; 
-                                        word-wrap:break-word; float:right;margin: 10px">
                                     <p>
                                         Published: {{.Comic.FormatDate}}<br/>
                                         Subtitle: {{.Comic.Subtitle}}<br/>
@@ -33,8 +31,25 @@
                                         Letters: {{.Comic.Letters}}<br/>
                                         Notes: {{.Comic.Notes}}<br/>
                                     </p>
-                                    </div>
                                 </div>
+							<div class="table-wrapper">
+								<table class="alt">
+									<thead>
+										<tr>
+											<th>Grade</th>
+											<th>Value</th>
+										</tr>
+									</thead>
+									<tbody>
+                                        {{range $book := .Comic.Books}}
+										<tr>
+											<td>{{$book.Grade}}</td>
+											<td>{{$book.FormatValue}}</td>
+										</tr>
+                                        {{end}}
+									</tbody>
+								</table>
+							</div>
 						</section>
                             {{if .Uploader}}
 						<section>

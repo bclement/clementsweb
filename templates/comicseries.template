@@ -37,7 +37,7 @@
                                         Colors: {{$comic.Colors}}<br/>
                                         Letters: {{$comic.Letters}}<br/>
                                         Notes: {{$comic.Notes}}<br/>
-                                        <!-- TODO book summary -->
+                                  Status: {{if $comic.Best}}{{$comic.Best}}{{else}}missing{{end}}
                                     </p>
                                     </div>
 								</li>

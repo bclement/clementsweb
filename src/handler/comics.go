@@ -297,8 +297,8 @@ func getComics(ds boltq.DataStore, query Query) (SeriesList, error) {
 	rval := NewSeriesList()
 	err := ds.View(func(tx *bolt.Tx) error {
 		results, e := query.run(tx)
-		var comic Comic
 		for i := 0; e == nil && i < len(results); i += 1 {
+			var comic Comic
 			e = json.Unmarshal(results[i], &comic)
 			if e == nil {
 				rval.Add(comic)
