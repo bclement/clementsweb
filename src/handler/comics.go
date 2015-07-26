@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
@@ -37,15 +36,11 @@ type IndexQuery struct {
 /*
 newIndexQuery creates a new string search from the fields of the qstring
 */
-func newIndexQuery(qstring string) IndexQuery {
-	parts := strings.Fields(qstring)
+func newIndexQuery(ds boltq.DataStore, qstring string) IndexQuery {
+	tokens := normalizeIndexTokens(ds, qstring)
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
-	values := make([][]byte, len(parts))
-	for i := 0; i < len(parts); i += 1 {
-		values[i] = []byte(strings.ToLower(parts[i]))
-	}
-	return IndexQuery{col, idx, values}
+	return IndexQuery{col, idx, tokens}
 }
 
 /*
@@ -244,7 +239,7 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 		if qstring == "" {
 			q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
 		} else {
-			q = newIndexQuery(qstring)
+			q = newIndexQuery(h.ds, qstring)
 			pagedata["query"] = qstring
 		}
 	}

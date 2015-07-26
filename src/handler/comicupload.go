@@ -20,7 +20,7 @@ const (
 	COMIC_COL   = "comics"
 	COMIC_KEY   = "comic"
 	COMIC_INDEX = "_word_idx"
-	PUNC_RUNES  = ",.?;:!()&"
+	PUNC_RUNES  = ",.?;:!()&'\""
 )
 
 /* replacePunc returns space if rune is punctuation */
@@ -31,6 +31,8 @@ func replacePunc(r rune) rune {
 	}
 	return rval
 }
+
+var possessivePattern = regexp.MustCompile("'s\\s")
 
 var datePattern = regexp.MustCompile("^\\s*([0-9]{4})-([0-9]{2})\\s*$")
 var moneyPattern = regexp.MustCompile("^\\s*\\$?\\s*([0-9]+)(.([0-9]{2}))?\\s*$")
@@ -335,19 +337,32 @@ func storeComic(ds boltq.DataStore, key [][]byte, comic *Comic) error {
 indexString breaks up the string into fields and uses it to populate a reverse index
 */
 func indexString(ds boltq.DataStore, str string, key [][]byte, err error) error {
-	str = strings.Map(replacePunc, str)
-	parts := strings.Fields(str)
+	tokens := normalizeIndexTokens(ds, str)
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
+	for i := 0; err == nil && i < len(tokens); i += 1 {
+		err = ds.Index(col, idx, tokens[i], key)
+	}
+	return err
+}
+
+/*
+splits and normalizes index token strings, also removes stop words
+*/
+func normalizeIndexTokens(ds boltq.DataStore, str string) (tokens [][]byte) {
+	str = possessivePattern.ReplaceAllString(str, " ")
+	str = strings.Map(replacePunc, str)
+	parts := strings.Fields(str)
+	tokens = make([][]byte, 0, len(parts))
 	stopWords := getStopWords(ds)
-	for i := 0; err == nil && i < len(parts); i += 1 {
+	for i := 0; i < len(parts); i += 1 {
 		lower := strings.ToLower(parts[i])
 		_, isStopWord := stopWords[lower]
 		if !isStopWord {
-			err = ds.Index(col, idx, []byte(lower), key)
+			tokens = append(tokens, []byte(lower))
 		}
 	}
-	return err
+	return
 }
 
 /*
