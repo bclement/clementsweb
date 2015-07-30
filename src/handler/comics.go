@@ -191,6 +191,7 @@ ComicHandler handles requests to the comics page
 */
 type ComicHandler struct {
 	listTemplate   *template.Template
+	topTemplate    *template.Template
 	seriesTemplate *template.Template
 	ds             boltq.DataStore
 	webroot        string
@@ -201,9 +202,10 @@ Comics creates a new ComicHandler
 */
 func Comics(db *bolt.DB, webroot string) *Wrapper {
 	list := CreateTemplate(webroot, "base.html", "comiclist.template")
+	top := CreateTemplate(webroot, "base.html", "comictop.template")
 	series := CreateTemplate(webroot, "base.html", "comicseries.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicHandler{list, series, ds, webroot}}
+	return &Wrapper{ComicHandler{list, top, series, ds, webroot}}
 }
 
 /*
@@ -219,6 +221,8 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 	vars := mux.Vars(r)
 	series, seriesPresent := vars["series"]
 	issueStr, issuePresent := vars["issue"]
+	qstring := r.FormValue("q")
+	topSeries := r.FormValue("s")
 	if seriesPresent {
 		template = h.seriesTemplate
 		terms := []*boltq.Term{boltq.Eq([]byte(series))}
@@ -233,15 +237,17 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 			terms = append(terms, boltq.Eq([]byte(issueStr)))
 		}
 		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
-	} else {
+	} else if qstring != "" {
 		template = h.listTemplate
-		qstring := r.FormValue("q")
-		if qstring == "" {
-			q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
-		} else {
-			q = newIndexQuery(h.ds, qstring)
-			pagedata["query"] = qstring
-		}
+		q = newIndexQuery(h.ds, qstring)
+		pagedata["query"] = qstring
+	} else if topSeries != "" {
+		template = h.listTemplate
+		term := boltq.Eq([]byte(topSeries))
+		q = QueryWrapper{boltq.NewQuery([]byte("comics"), term)}
+	} else {
+		template = h.topTemplate
+		q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
 	}
 	sl, e := getComics(h.ds, q)
 	if e == nil {

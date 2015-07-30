@@ -153,6 +153,33 @@
                                             value="{{.Comic.Letters}}" placeholder="Letters"/>
                                     </div>
                                 </div>
+								<div class="row">
+									<div class="three columns">
+										<div class="select-wrapper">
+                                            <label>Grade</label>
+											<select name="grade" id="grade">
+												<option value="">- Grade -</option>
+												<option value="PR">Poor</option>
+												<option value="FR">Fair</option>
+												<option value="GD">Good</option>
+												<option value="VG">Very Good</option>
+												<option value="FN">Fine</option>
+												<option value="VF">Very Fine</option>
+												<option value="NM">Near Mint</option>
+											</select>
+										</div>
+                                    </div>
+									<div class="three columns">
+                                            <label>Value</label>
+										<input type="text" name="value" id="value"
+                                            value="{{.value}}" placeholder="Value" />
+									</div>
+									<div class="three columns">
+										<label >Signed</label>
+										<input type="checkbox" id="signed" name="signed" value="true">
+										<label for="checkbox"></label>
+									</div>
+                                </div>
 								<div class="row uniform 50%">
 									<div class="12u$">
 										<ul class="actions">

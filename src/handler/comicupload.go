@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -391,13 +393,36 @@ func processCover(webroot string, r *http.Request, comic *Comic) (coverPath, sta
 	err = os.MkdirAll(absPath, 0700)
 	if err == nil {
 		cfilePath := filepath.Join(absPath, fileName)
-		err = writeFile(cfilePath, formFile)
+		err = overwriteFile(cfilePath, formFile)
 		coverPath = filepath.Join(dirName, fileName)
 	}
 	if err != nil {
 		status = err.Error()
 	}
 	return
+}
+
+/*
+overwriteFile writes the file to the path on the filesystem
+*/
+func overwriteFile(path string, src multipart.File) error {
+
+	var err error
+	var target *os.File
+	if src != nil {
+		target, err = os.Create(path)
+		if err == nil {
+			defer target.Close()
+			_, err = io.Copy(target, src)
+			if err == nil {
+				err = target.Sync()
+			}
+		}
+	} else {
+		err = fmt.Errorf("Missing data for file: %v", path)
+	}
+
+	return err
 }
 
 /*
