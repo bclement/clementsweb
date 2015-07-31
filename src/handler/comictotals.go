@@ -22,6 +22,7 @@ type SeriesTotal struct {
 	SeriesId string
 	Count    int
 	Value    int
+	UpToDate bool
 }
 
 /*
@@ -93,14 +94,20 @@ func (h ComicTotalsHandler) Handle(w http.ResponseWriter, r *http.Request,
 getComicTotals gets the total values and book counts grouped by series
 */
 func getComicTotals(ds boltq.DataStore) (totals []SeriesTotal, err error) {
-	err = ds.View(func(tx *bolt.Tx) (e error) {
+	err = ds.Update(func(tx *bolt.Tx) (e error) {
 		b := tx.Bucket([]byte(TOTALS_COL))
 		if b != nil {
-			var total SeriesTotal
 			c := b.Cursor()
 			for k, v := c.First(); e == nil && k != nil; k, v = c.Next() {
+				var total SeriesTotal
 				e = json.Unmarshal(v, &total)
 				if e == nil {
+					if !total.UpToDate {
+						total, e = calculateComicTotals(tx, total.SeriesId)
+						if e == nil {
+							storeTotal(b, k, v, total)
+						}
+					}
 					totals = append(totals, total)
 				}
 			}
@@ -110,13 +117,40 @@ func getComicTotals(ds boltq.DataStore) (totals []SeriesTotal, err error) {
 	return
 }
 
+func storeTotal(b *bolt.Bucket, k, v []byte, st SeriesTotal) (err error) {
+	v, err = json.Marshal(&st)
+	if err == nil {
+		b.Put(k, v)
+	}
+	return
+}
+
+func calculateComicTotals(tx *bolt.Tx, seriesId string) (SeriesTotal, error) {
+	term := boltq.Eq([]byte(seriesId))
+	q := boltq.NewQuery([]byte("comics"), term)
+	results, err := boltq.TxQuery(tx, q)
+	count := 0
+	totalValue := 0
+	for i := 0; err == nil && i < len(results); i += 1 {
+		var comic Comic
+		err = json.Unmarshal(results[i], &comic)
+		if err == nil {
+			for i := range comic.Books {
+				count += 1
+				totalValue += comic.Books[i].Value
+			}
+		}
+	}
+	return SeriesTotal{seriesId, count, totalValue, true}, err
+}
+
 /*
-updateComicTotals updates the running totals for value and book count for the series
+updateComicTotals updates the dirty flag for the series totals
 */
-func updateComicTotals(ds boltq.DataStore, seriesId string, book Book) (err error) {
+func updateComicTotals(ds boltq.DataStore, seriesId string) (err error) {
 	err = ds.Update(func(tx *bolt.Tx) error {
 		var serialized []byte
-		total := SeriesTotal{seriesId, 0, 0}
+		var total SeriesTotal
 		b, e := tx.CreateBucketIfNotExists([]byte(TOTALS_COL))
 		if e == nil {
 			serialized = b.Get([]byte(seriesId))
@@ -125,8 +159,7 @@ func updateComicTotals(ds boltq.DataStore, seriesId string, book Book) (err erro
 			}
 		}
 		if e == nil {
-			total.Count += 1
-			total.Value += book.Value
+			total.UpToDate = false
 			serialized, e = json.Marshal(&total)
 			if e == nil {
 				b.Put([]byte(seriesId), serialized)

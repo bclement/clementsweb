@@ -20,7 +20,9 @@
 									<tbody>
                                         {{range $series := .SeriesTotals}}
 										<tr>
-											<td>{{$series.SeriesId}}</td>
+											<td>
+                      <a href="/comics/{{$series.SeriesId}}">{{$series.SeriesId}}</a>
+                                            </td>
 											<td>{{$series.Count}}</td>
 											<td>{{$series.FormatValue}}</td>
 										</tr>

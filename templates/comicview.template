@@ -16,7 +16,7 @@
                                     <p>
                                         Published: {{.Comic.FormatDate}}<br/>
                                         Subtitle: {{.Comic.Subtitle}}<br/>
-                                        <a href="./{{.Comic.SeriesId}}/{{.Comic.Issue}}">
+                                        <a href="/comics/{{.Comic.SeriesId}}/{{.Comic.Issue}}">
                                         Issue #: {{.Comic.Issue}}<br/>
                                         </a>
                                         Cover ID: {{.Comic.CoverId}}<br/>

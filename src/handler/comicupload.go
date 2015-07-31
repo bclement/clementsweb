@@ -277,7 +277,7 @@ func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data Pag
 				if missingErr != nil {
 					log.Printf("Problem updating missing index %v", missingErr)
 				}
-				totalsErr := updateComicTotals(ds, comic.SeriesId, book)
+				totalsErr := updateComicTotals(ds, comic.SeriesId)
 				if totalsErr != nil {
 					log.Printf("Problem updating comic totals %v", totalsErr)
 				}

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -20,8 +19,6 @@ const (
 ComicMissingHandler handles requests to the comics missing page
 */
 type ComicMissingHandler struct {
-	blockedTemplate *template.Template
-	loginTemplate   *template.Template
 	missingTemplate *template.Template
 	ds              boltq.DataStore
 	webroot         string
@@ -31,11 +28,9 @@ type ComicMissingHandler struct {
 ComicsMissing creates a new ComicMissingHandler
 */
 func ComicsMissing(db *bolt.DB, webroot string) *Wrapper {
-	block := CreateTemplate(webroot, "base.html", "block.template")
-	login := CreateTemplate(webroot, "base.html", "login.template")
 	missing := CreateTemplate(webroot, "base.html", "comicmissing.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicMissingHandler{block, login, missing, ds, webroot}}
+	return &Wrapper{ComicMissingHandler{missing, ds, webroot}}
 }
 
 /*
@@ -46,80 +41,19 @@ func (h ComicMissingHandler) Handle(w http.ResponseWriter, r *http.Request,
 
 	var err *AppError
 
-	authorized, templateErr := handleAuth(w, r, h.loginTemplate, h.blockedTemplate,
-		h.ds.DB, data, "ComicUploader", "")
-	if authorized && templateErr == nil {
-		if r.Method == "POST" {
-			status := h.process(r, data)
-			data["Status"] = status
-		}
-		titles, queryErr := h.findMissing()
-		if queryErr != nil {
-			/* TODO update status? */
-			log.Printf("Problem finding missing comics: %v", queryErr)
-		}
-		data["Titles"] = titles
-		templateErr = h.missingTemplate.Execute(w, data)
+	titles, queryErr := h.findMissing()
+	if queryErr != nil {
+		/* TODO update status? */
+		log.Printf("Problem finding missing comics: %v", queryErr)
 	}
+	data["Titles"] = titles
+	templateErr := h.missingTemplate.Execute(w, data)
 
 	if templateErr != nil {
 		log.Printf("Problem rendering %v\n", templateErr)
 	}
 
 	return err
-}
-
-/*
-process handles entering a book for a comic when it is added to the collection
-*/
-func (h ComicMissingHandler) process(r *http.Request, data PageData) (status string) {
-
-	var comic Comic
-	var err error
-
-	comic.SeriesId, status = processString(r, "seriesId", status, data)
-	comic.Issue, status = processInt(r, "issue", status, data)
-	comic.CoverId, status = processString(r, "coverId", status, data)
-
-	key := comic.createKey()
-	/* TODO this isn't safe for concurrent updates */
-	existing, found, err := getComic(h.ds, key)
-	if err != nil {
-		status = fmt.Sprintf("Can't lookup comic: %v", err.Error())
-	} else if !found {
-		status = fmt.Sprintf("Unable to find comic: %v, %v, %v", comic.SeriesId, comic.Issue, comic.CoverId)
-	}
-	if status == "" {
-		var book Book
-		/* TODO validate grade value? */
-		book.Grade = r.FormValue("grade")
-		if book.Grade != "" {
-			book.Value, status = processMoney(r, "value", status, data)
-			signedStr := r.FormValue("signed")
-			book.Signed = signedStr == "true"
-			existing.Books = append(existing.Books, book)
-		}
-		if status == "" {
-			encoded, err := json.Marshal(existing)
-			if err == nil {
-				err = h.ds.Store([]byte(COMIC_COL), key, encoded)
-			}
-			if err == nil {
-				missingErr := updateMissingIndex(h.ds, existing)
-				if missingErr != nil {
-					log.Printf("Problem updating missing index %v", missingErr)
-				}
-				totalsErr := updateComicTotals(h.ds, comic.SeriesId, book)
-				if totalsErr != nil {
-					log.Printf("Problem updating comic totals %v", totalsErr)
-				}
-			}
-			if err != nil {
-				status = fmt.Sprintf("Unable to save comic: %v", err.Error())
-			}
-		}
-	}
-	return
 }
 
 /*
@@ -161,7 +95,7 @@ func (h ComicMissingHandler) findMissing() ([]ComicTitle, error) {
 }
 
 /*
-queryForMissingComics executs the provided queries on the data store
+queryForMissingComics executes the provided queries on the data store
 TODO this could be a generic query method
 */
 func queryForMissingComics(ds boltq.DataStore, queries []*boltq.Query) (SeriesList, error) {
