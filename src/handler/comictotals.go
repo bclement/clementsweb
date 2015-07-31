@@ -102,6 +102,10 @@ func getComicTotals(ds boltq.DataStore) (totals []SeriesTotal, err error) {
 				var total SeriesTotal
 				e = json.Unmarshal(v, &total)
 				if e == nil {
+					if total.SeriesId == "" {
+						total.UpToDate = false
+						total.SeriesId = string(k)
+					}
 					if !total.UpToDate {
 						total, e = calculateComicTotals(tx, total.SeriesId)
 						if e == nil {
@@ -150,7 +154,7 @@ updateComicTotals updates the dirty flag for the series totals
 func updateComicTotals(ds boltq.DataStore, seriesId string) (err error) {
 	err = ds.Update(func(tx *bolt.Tx) error {
 		var serialized []byte
-		var total SeriesTotal
+		total := SeriesTotal{seriesId, 0, 0, false}
 		b, e := tx.CreateBucketIfNotExists([]byte(TOTALS_COL))
 		if e == nil {
 			serialized = b.Get([]byte(seriesId))
