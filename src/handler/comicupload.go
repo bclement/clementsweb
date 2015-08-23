@@ -1,18 +1,24 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"io"
 	"log"
+	"math/big"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
@@ -51,6 +57,41 @@ const (
 
 var gradeRank = map[string]int{POOR: 0, FAIR: 1, GOOD: 2, VERY_GOOD: 3, FINE: 4, VERY_FINE: 5, NEAR_MINT: 6}
 
+var FRAC_NUMS = map[rune]float32{
+	'¼': float32(1 / 4),
+	'½': float32(1 / 2),
+	'¾': float32(3 / 4),
+	'⅐': float32(1 / 7),
+	'⅑': float32(1 / 9),
+	'⅒': float32(1 / 10),
+	'⅓': float32(1 / 3),
+	'⅔': float32(2 / 3),
+	'⅕': float32(1 / 5),
+	'⅖': float32(2 / 5),
+	'⅗': float32(3 / 5),
+	'⅘': float32(4 / 5),
+	'⅙': float32(1 / 6),
+	'⅚': float32(5 / 6),
+	'⅛': float32(1 / 8),
+	'⅜': float32(3 / 8),
+	'⅝': float32(5 / 8),
+	'⅞': float32(7 / 8),
+}
+
+var SAFE_CHARS = map[rune]bool{'-': true, '.': true, '_': true}
+
+func init() {
+	addSafeRange(SAFE_CHARS, 'a', 'z')
+	addSafeRange(SAFE_CHARS, 'A', 'Z')
+	addSafeRange(SAFE_CHARS, '0', '9')
+}
+
+func addSafeRange(set map[rune]bool, start, end rune) {
+	for r := start; r <= end; r += 1 {
+		set[r] = true
+	}
+}
+
 /*
 Physical copy of comic book
 */
@@ -79,7 +120,7 @@ type Comic struct {
 	SeriesId    string
 	Title       string
 	Subtitle    string
-	Issue       int
+	Issue       string
 	CoverId     string
 	CoverPrice  int
 	ChronOffset int
@@ -94,19 +135,12 @@ type Comic struct {
 }
 
 /*
-formatIssue formats issue number to be used as db key
-*/
-func formatIssue(issue int) string {
-	return fmt.Sprintf("%03d", issue)
-}
-
-/*
 createKey creats fully qualified database key for comic
 */
-func (comic *Comic) createKey() (key [][]byte) {
-	key = append(key, []byte(comic.SeriesId))
-	key = append(key, []byte(formatIssue(comic.Issue)))
-	key = append(key, []byte(comic.CoverId))
+func (comic *Comic) CreateKey() (key [][]byte) {
+	key = append(key, []byte(comic.SeriesKey()))
+	key = append(key, []byte(comic.IssueKey()))
+	key = append(key, []byte(comic.CoverKey()))
 	return
 }
 
@@ -116,6 +150,164 @@ func (comic *Comic) FormatDate() string {
 
 func (comic *Comic) FormatCoverPrice() string {
 	return FormatCurrency(comic.CoverPrice)
+}
+
+func (comic *Comic) FormatIssue() string {
+	/* ints are padded to sort lexigraphically */
+	rval := comic.Issue
+	for len(rval) > 1 && rval[0] == '0' {
+		rval = rval[1:]
+	}
+	return rval
+}
+
+func (comic *Comic) SeriesKey() string {
+	return SanitizeKey(comic.SeriesId)
+}
+
+func (comic *Comic) SeriesPath() string {
+	return url.QueryEscape(comic.SeriesKey())
+}
+
+func (comic *Comic) IssueKey() string {
+	return SanitizeKey(comic.Issue)
+}
+
+func (comic *Comic) IssuePath() string {
+	return comic.SeriesPath() + "/" + url.QueryEscape(comic.IssueKey())
+}
+
+func (comic *Comic) CoverKey() string {
+	return SanitizeKey(comic.CoverId)
+}
+
+func (comic *Comic) FullPath() string {
+	return comic.IssuePath() + "/" + url.QueryEscape(comic.CoverKey())
+}
+
+func SanitizeKey(s string) string {
+	var buffer bytes.Buffer
+
+	s = strings.ToLower(s)
+	prevUnderscore := false
+	for i, w := 0, 0; i < len(s); i += w {
+		r, width := utf8.DecodeRuneInString(s[i:])
+		_, safe := SAFE_CHARS[r]
+		if !safe && width == 1 {
+			if !prevUnderscore {
+				buffer.WriteRune('_')
+				prevUnderscore = true
+			}
+		} else {
+			if r == '_' && !prevUnderscore {
+				buffer.WriteRune('_')
+				prevUnderscore = true
+			} else {
+				buffer.WriteRune(r)
+				prevUnderscore = false
+			}
+		}
+		w = width
+	}
+	return buffer.String()
+}
+
+func UnderscoreDecode(s string) string {
+	if strings.ContainsRune(s, '_') {
+		var buffer bytes.Buffer
+		for i, w := 0, 0; i < len(s); i += w {
+			r, width := utf8.DecodeRuneInString(s[i:])
+			if r == '_' {
+				peek, peekWidth := readAhead(s, i+width, 2)
+				pass := true
+				if len(peek) == 2 {
+					b, err := hex.DecodeString(peek)
+					if err == nil {
+						pass = false
+						buffer.Write(b)
+					}
+				}
+				if pass {
+					buffer.WriteRune(r)
+					buffer.WriteString(peek)
+				}
+				width += peekWidth
+			} else {
+				buffer.WriteRune(r)
+			}
+			w = width
+		}
+		return buffer.String()
+	} else {
+		return s
+	}
+}
+
+func readAhead(s string, index, count int) (result string, width int) {
+	var buffer bytes.Buffer
+	for i := 0; i < count && index < len(s); {
+		r, w := utf8.DecodeRuneInString(s[index:])
+		buffer.WriteRune(r)
+		index += w
+		width += w
+	}
+	return buffer.String(), width
+}
+
+func (comic *Comic) IssueValue() (value float32) {
+	issue := comic.Issue
+	/* vast majority will be integers */
+	value, success := stringIntToFloat(issue)
+	if !success {
+		value, success = parseFloat(issue)
+	}
+	if !success {
+		value, success = stringFractionToFloat(issue)
+	}
+	if !success {
+		/* no idea, just hash the damn thing */
+		h := fnv.New32a()
+		h.Write([]byte(comic.Issue))
+		value = float32(h.Sum32())
+	}
+	return
+}
+
+func stringIntToFloat(s string) (value float32, success bool) {
+	i, err := strconv.Atoi(s)
+	if err == nil {
+		value = float32(i)
+		success = true
+	}
+	return
+}
+
+func parseFloat(s string) (value float32, success bool) {
+	d, err := strconv.ParseFloat(s, 32)
+	if err == nil {
+		value = float32(d)
+		success = true
+	}
+	return
+}
+
+func stringFractionToFloat(s string) (value float32, success bool) {
+	/* unicode fraction? */
+	ch, _ := utf8.DecodeRuneInString(s)
+	v, found := FRAC_NUMS[ch]
+	if found {
+		value = v
+		success = true
+	} else {
+		/* could be a multi character fraction */
+		r := new(big.Rat)
+		r, _ = r.SetString(s)
+		if r != nil {
+			value, _ = r.Float32()
+			success = true
+		}
+	}
+	return
 }
 
 /*
@@ -167,24 +359,20 @@ var _stopWords map[string]bool
 /*
 getStopWords gets a list of words that should be ignored by the search index
 */
-func getStopWords(ds boltq.DataStore) map[string]bool {
+func getStopWords(tx *bolt.Tx) map[string]bool {
 	if _stopWords != nil {
 		return _stopWords
 	} else {
 		rval := make(map[string]bool)
 		var words []string
-
-		err := ds.View(func(tx *bolt.Tx) error {
-			var err error
-			b := tx.Bucket([]byte("text-index"))
-			if b != nil {
-				encoded := b.Get([]byte("stop-words"))
-				if encoded != nil {
-					err = json.Unmarshal(encoded, &words)
-				}
+		var err error
+		b := tx.Bucket([]byte("text-index"))
+		if b != nil {
+			encoded := b.Get([]byte("stop-words"))
+			if encoded != nil {
+				err = json.Unmarshal(encoded, &words)
 			}
-			return err
-		})
+		}
 		if err != nil {
 			log.Printf("Problem reading stop words from db: %v", err)
 		} else {
@@ -231,10 +419,10 @@ func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data Pag
 	var err error
 
 	comic.SeriesId, status = processString(r, "seriesId", status, data)
-	comic.Issue, status = processInt(r, "issue", status, data)
+	comic.Issue, status = processString(r, "issue", status, data)
 	comic.CoverId, status = processString(r, "coverId", status, data)
 
-	key := comic.createKey()
+	key := comic.CreateKey()
 	/* TODO this isn't safe for concurrent updates */
 	existing, found, err := getComic(ds, key)
 	if err != nil {
@@ -273,11 +461,11 @@ func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data Pag
 			if err != nil {
 				status = fmt.Sprintf("Unable to save comic: %v", err.Error())
 			} else {
-				missingErr := updateMissingIndex(ds, comic)
+				missingErr := UpdateMissingIndex(ds, comic)
 				if missingErr != nil {
 					log.Printf("Problem updating missing index %v", missingErr)
 				}
-				totalsErr := updateComicTotals(ds, comic.SeriesId)
+				totalsErr := UpdateComicTotals(ds, comic.SeriesId)
 				if totalsErr != nil {
 					log.Printf("Problem updating comic totals %v", totalsErr)
 				}
@@ -322,28 +510,42 @@ func storeComic(ds boltq.DataStore, key [][]byte, comic *Comic) error {
 	}
 
 	if err == nil {
-		err = indexString(ds, comic.Title, key, err)
-		err = indexString(ds, comic.Subtitle, key, err)
-		err = indexString(ds, comic.Author, key, err)
-		err = indexString(ds, comic.CoverArtist, key, err)
-		err = indexString(ds, comic.Pencils, key, err)
-		err = indexString(ds, comic.Inks, key, err)
-		err = indexString(ds, comic.Colors, key, err)
-		err = indexString(ds, comic.Letters, key, err)
+		err = IndexComic(ds, key, comic)
 	}
 
 	return err
 }
 
+func IndexComic(ds boltq.DataStore, key [][]byte, comic *Comic) (err error) {
+	err = ds.Update(func(tx *bolt.Tx) error {
+		return TxIndexComic(tx, key, comic)
+	})
+
+	return
+}
+
+func TxIndexComic(tx *bolt.Tx, key [][]byte, comic *Comic) (err error) {
+	err = indexString(tx, comic.Title, key, err)
+	err = indexString(tx, comic.Subtitle, key, err)
+	err = indexString(tx, comic.Author, key, err)
+	err = indexString(tx, comic.CoverArtist, key, err)
+	err = indexString(tx, comic.Pencils, key, err)
+	err = indexString(tx, comic.Inks, key, err)
+	err = indexString(tx, comic.Colors, key, err)
+	err = indexString(tx, comic.Letters, key, err)
+	err = indexString(tx, comic.Notes, key, err)
+	return
+}
+
 /*
 indexString breaks up the string into fields and uses it to populate a reverse index
 */
-func indexString(ds boltq.DataStore, str string, key [][]byte, err error) error {
-	tokens := normalizeIndexTokens(ds, str)
+func indexString(tx *bolt.Tx, str string, key [][]byte, err error) error {
+	tokens := normalizeIndexTokens(tx, str)
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
 	for i := 0; err == nil && i < len(tokens); i += 1 {
-		err = ds.Index(col, idx, tokens[i], key)
+		err = boltq.TxIndex(tx, col, idx, tokens[i], key)
 	}
 	return err
 }
@@ -351,12 +553,12 @@ func indexString(ds boltq.DataStore, str string, key [][]byte, err error) error 
 /*
 splits and normalizes index token strings, also removes stop words
 */
-func normalizeIndexTokens(ds boltq.DataStore, str string) (tokens [][]byte) {
+func normalizeIndexTokens(tx *bolt.Tx, str string) (tokens [][]byte) {
 	str = possessivePattern.ReplaceAllString(str, " ")
 	str = strings.Map(replacePunc, str)
 	parts := strings.Fields(str)
 	tokens = make([][]byte, 0, len(parts))
-	stopWords := getStopWords(ds)
+	stopWords := getStopWords(tx)
 	for i := 0; i < len(parts); i += 1 {
 		lower := strings.ToLower(parts[i])
 		_, isStopWord := stopWords[lower]
@@ -386,8 +588,10 @@ func processCover(webroot string, r *http.Request, comic *Comic) (coverPath, sta
 	}
 	dotIndex := strings.LastIndex(headers.Filename, ".")
 	ext := headers.Filename[dotIndex:]
-	dirName := strings.Replace(comic.SeriesId, " ", "_", -1)
-	fileName := fmt.Sprintf("%v_%v%v", comic.Issue, comic.CoverId, ext)
+	dirName := comic.SeriesKey()
+	issuePart := comic.IssueKey()
+	coverPart := comic.CoverKey()
+	fileName := fmt.Sprintf("%v_%v%v", issuePart, coverPart, ext)
 	dirPath := filepath.Join("static", "comics", dirName)
 	absPath := filepath.Join(webroot, dirPath)
 	err = os.MkdirAll(absPath, 0700)

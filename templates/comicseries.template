@@ -8,7 +8,9 @@
                     {{range $title := .Titles}}
 						<section>
 						    <h3 style="padding-left:100px;">
+                            <a href="{{$title.Path}}">
                                {{$title.Publisher}} {{$title.DisplayName}}
+                            </a>
                             </h3>
 							<ul class="flex-container wrap">
                             {{range $comic:= $title.Comics}}
@@ -21,10 +23,10 @@
                                     <p>
                                         Published: {{$comic.FormatDate}}<br/>
                                         Subtitle: {{$comic.Subtitle}}<br/>
-                                        <a href="/comics/{{$comic.SeriesId}}/{{$comic.Issue}}">
-                                        Issue #: {{$comic.Issue}}<br/>
+                                        <a href="/comics/{{$comic.IssuePath}}">
+                                        Issue #: {{$comic.FormatIssue}}<br/>
                                         </a>
-                      <a href="/comics/{{$comic.SeriesId}}/{{$comic.Issue}}/{{$comic.CoverId}}">
+                      <a href="/comics/{{$comic.FullPath}}">
                                         Cover ID: {{$comic.CoverId}}<br/>
                                         </a>
                                         Cover Price: {{$comic.FormatCoverPrice}}<br/>

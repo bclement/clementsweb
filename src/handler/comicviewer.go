@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
@@ -61,42 +60,31 @@ func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
 	var err *AppError
 	var templateErr error
 
-	var comic Comic
-
-	found := false
 	vars := mux.Vars(r)
-	comic.SeriesId, found = vars["series"]
+	seriesKey, found := vars["series"]
 	if !found {
 		status = "Missing series argument"
 	}
-	issueStr, found := vars["issue"]
+	issueKey, found := vars["issue"]
 	if !found {
 		status = "Missing issue argument"
-	} else {
-		var err error
-		comic.Issue, err = strconv.Atoi(issueStr)
-		if err != nil {
-			status = "Invalid issue argument"
-		}
 	}
-	comic.CoverId, found = vars["cover"]
+	coverKey, found := vars["cover"]
 	if !found {
 		status = "Missing cover argument"
 	}
 
-	key := comic.createKey()
+	key := [][]byte{[]byte(seriesKey), []byte(issueKey), []byte(coverKey)}
 	existing, found, lookupErr := getComic(h.ds, key)
 	if lookupErr != nil {
 		status = fmt.Sprintf("Can't lookup comic: %v", lookupErr.Error())
 		/* TODO keep going? */
-	} else if found {
-		comic = existing
-	} else {
+	} else if !found {
 		status = fmt.Sprintf("Unable to find comic: %v %v %v",
-			comic.SeriesId, comic.Issue, comic.CoverId)
+			seriesKey, issueKey, coverKey)
 	}
 
-	pagedata["Comic"] = &comic
+	pagedata["Comic"] = &existing
 	pagedata["Status"] = status
 	templateErr = h.viewTemplate.Execute(w, pagedata)
 
@@ -105,4 +93,12 @@ func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
 	}
 
 	return err
+}
+
+func decodeVar(vars map[string]string, key string) (decoded string, found bool) {
+	encoded, found := vars[key]
+	if found {
+		decoded = UnderscoreDecode(encoded)
+	}
+	return
 }

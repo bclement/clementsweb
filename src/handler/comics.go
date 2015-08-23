@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"sort"
-	"strconv"
 
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
@@ -37,7 +36,11 @@ type IndexQuery struct {
 newIndexQuery creates a new string search from the fields of the qstring
 */
 func newIndexQuery(ds boltq.DataStore, qstring string) IndexQuery {
-	tokens := normalizeIndexTokens(ds, qstring)
+	var tokens [][]byte
+	ds.View(func(tx *bolt.Tx) error {
+		tokens = normalizeIndexTokens(tx, qstring)
+		return nil
+	})
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
 	return IndexQuery{col, idx, tokens}
@@ -67,7 +70,7 @@ func (qw QueryWrapper) run(tx *bolt.Tx) ([][]byte, error) {
 /*
 ComicList is a sortable slice of comics
 */
-type ComicList []Comic
+type ComicList []*Comic
 
 /*
 see Sort interface
@@ -83,7 +86,7 @@ func (cl ComicList) Less(i, j int) bool {
 	if cl[i].Issue == cl[j].Issue {
 		return cl[i].CoverId < cl[j].CoverId
 	} else {
-		return cl[i].Issue < cl[j].Issue
+		return cl[i].IssueValue() < cl[j].IssueValue()
 	}
 }
 
@@ -123,7 +126,7 @@ func NewSeriesList() SeriesList {
 /*
 Adds the comic to the appropriate series
 */
-func (sl *SeriesList) Add(c Comic) {
+func (sl *SeriesList) Add(c *Comic) {
 	sl.Map[c.SeriesId] = append(sl.Map[c.SeriesId], c)
 	sl.Keys = sl.Keys[:0]
 	for key, _ := range sl.Map {
@@ -149,7 +152,7 @@ func (sl SeriesList) Swap(i, j int) {
 FirstOf returns the first comic in the series with index i
 */
 func (sl SeriesList) FirstOf(i int) *Comic {
-	return &sl.Map[sl.Keys[i]][0]
+	return sl.Map[sl.Keys[i]][0]
 }
 
 /*
@@ -227,13 +230,6 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 		template = h.seriesTemplate
 		terms := []*boltq.Term{boltq.Eq([]byte(series))}
 		if issuePresent {
-			/* convert to number to ensure key is formatted */
-			issue, issueErr := strconv.Atoi(issueStr)
-			if issueErr == nil {
-				/* if there was an error, it wasn't a valid issue,
-				and we won't find anything in the query */
-				issueStr = formatIssue(issue)
-			}
 			terms = append(terms, boltq.Eq([]byte(issueStr)))
 		}
 		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
@@ -278,7 +274,8 @@ func packageTitles(sl SeriesList) (titles []ComicTitle) {
 		/* TODO this is only needed because of 1997 star wars,
 		it should be optimized for common case */
 		firstTitle := list[0].Title
-		currTitle := ComicTitle{list[0].Publisher, seriesId, seriesId, nil}
+		path := list[0].SeriesPath()
+		currTitle := ComicTitle{list[0].Publisher, seriesId, path, nil}
 		for i := range list {
 			if firstTitle != list[i].Title {
 				titles = append(titles, currTitle)
@@ -302,7 +299,7 @@ func getComics(ds boltq.DataStore, query Query) (SeriesList, error) {
 			var comic Comic
 			e = json.Unmarshal(results[i], &comic)
 			if e == nil {
-				rval.Add(comic)
+				rval.Add(&comic)
 			}
 		}
 

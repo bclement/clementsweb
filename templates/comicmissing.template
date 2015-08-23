@@ -28,11 +28,11 @@
 										<tr>
 											<td>{{$comic.Subtitle}}</td>
                                             <td>
-                                            <a href="{{$title.Path}}/{{$comic.Issue}}">
-											{{$comic.Issue}}</a>
+                                            <a href="{{$comic.IssuePath}}">
+											{{$comic.FormatIssue}}</a>
                                             </td>
                                             <td>
-                              <a href="{{$title.Path}}/{{$comic.Issue}}/{{$comic.CoverId}}">
+                              <a href="{{$comic.FullPath}}">
 											{{$comic.CoverId}}</a>
                                             </td>
                                             <td>{{$comic.CoverArtist}}</td>

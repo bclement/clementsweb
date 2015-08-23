@@ -10,14 +10,16 @@
                                     <img width="400" style="float:right;"
                                         src="/static/comics/{{.Comic.CoverPath}}"/>
 						    <h3 >
+                              <a href="/comics/{{.Comic.SeriesPath}}">
                                {{.Comic.Publisher}} {{.Comic.Title}}
+                              </a>
                             </h3>
                                 <div>
                                     <p>
                                         Published: {{.Comic.FormatDate}}<br/>
                                         Subtitle: {{.Comic.Subtitle}}<br/>
                                         <a href="/comics/{{.Comic.SeriesId}}/{{.Comic.Issue}}">
-                                        Issue #: {{.Comic.Issue}}<br/>
+                                        Issue #: {{.Comic.FormatIssue}}<br/>
                                         </a>
                                         Cover ID: {{.Comic.CoverId}}<br/>
                                         Cover Price: {{.Comic.FormatCoverPrice}}<br/>

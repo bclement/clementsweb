@@ -59,21 +59,25 @@ func (h ComicMissingHandler) Handle(w http.ResponseWriter, r *http.Request,
 /*
 updateMissingIndex updates the missing book index for the collection
 */
-func updateMissingIndex(ds boltq.DataStore, comic Comic) (err error) {
-	compositeKey := comic.createKey()
-	serializedKey := boltq.SerializeComposite(compositeKey)
+func UpdateMissingIndex(ds boltq.DataStore, comic Comic) (err error) {
 	err = ds.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(MISSING_COL))
-		if len(comic.Books) > 0 {
-			b.Delete(serializedKey)
-		} else {
-			/* TODO something smaller for value to save space? */
-			b.Put(serializedKey, serializedKey)
-		}
-
-		return err
+		return TxUpdateMissingIndex(tx, comic)
 	})
 	return
+}
+
+func TxUpdateMissingIndex(tx *bolt.Tx, comic Comic) (err error) {
+	compositeKey := comic.CreateKey()
+	serializedKey := boltq.SerializeComposite(compositeKey)
+	b, err := tx.CreateBucketIfNotExists([]byte(MISSING_COL))
+	if len(comic.Books) > 0 {
+		b.Delete(serializedKey)
+	} else {
+		/* TODO something smaller for value to save space? */
+		b.Put(serializedKey, serializedKey)
+	}
+
+	return err
 }
 
 /*
@@ -101,14 +105,14 @@ TODO this could be a generic query method
 func queryForMissingComics(ds boltq.DataStore, queries []*boltq.Query) (SeriesList, error) {
 	rval := NewSeriesList()
 	err := ds.View(func(tx *bolt.Tx) (err error) {
-		var comic Comic
 		for i := 0; err == nil && i < len(queries); i += 1 {
+			var comic Comic
 			qwrapper := QueryWrapper{queries[i]}
 			results, err := qwrapper.run(tx)
 			for j := 0; err == nil && j < len(results); j += 1 {
 				err = json.Unmarshal(results[j], &comic)
 				if err == nil {
-					rval.Add(comic)
+					rval.Add(&comic)
 				}
 			}
 		}
