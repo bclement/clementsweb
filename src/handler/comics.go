@@ -243,7 +243,8 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 		q = QueryWrapper{boltq.NewQuery([]byte("comics"), term)}
 	} else {
 		template = h.topTemplate
-		q = QueryWrapper{boltq.NewQuery([]byte("comics"), boltq.Any())}
+		terms := []*boltq.Term{boltq.Any(), boltq.Eq([]byte("1"))}
+		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
 	}
 	sl, e := getComics(h.ds, q)
 	if e == nil {

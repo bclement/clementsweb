@@ -112,7 +112,7 @@
 									<div class="three columns">
                                         <label>Notes</label>
                                         <input type="text" name="notes" id="notes" 
-                                            value="{{.notes}}" placeholder="Notes"/>
+                                            value="" placeholder="Notes"/>
                                     </div>
 									<div class="three columns">
 										<div class="select-wrapper">
