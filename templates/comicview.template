@@ -8,7 +8,7 @@
 				<div class="container">
 						<section>
                                     <img width="400" style="float:right;"
-                                        src="/static/comics/{{.Comic.CoverPath}}"/>
+                                        src="{{$.ImgPrefix}}/covers/{{.Comic.CoverPath}}"/>
 						    <h3 >
                               <a href="/comics/{{.Comic.SeriesPath}}">
                                {{.Comic.Publisher}} {{.Comic.Title}}

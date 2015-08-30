@@ -15,10 +15,11 @@
                     {{range $title := .Titles }}
                         {{with $comic := index $title.Comics 0}}
                         <li>
+                            <hr/>
                             <a href="/comics/?s={{$comic.SeriesKey}}">
-                                    <img width="400" 
-                                        src="/static/comics/{{$comic.CoverPath}}"/>
-                                    <p><b>{{$comic.SeriesId}}</b></p>
+                                    <img width="250" 
+                                        src="{{$.ImgPrefix}}/covers/{{$comic.CoverPath}}"/>
+                                    <div style="width: 250px"><b>{{$comic.SeriesId}}</b></div>
                             </a>
                         </li>
                         {{end}}

@@ -17,6 +17,7 @@ import (
 
 var standalone = flag.String("standalone", "", "binding for standalone app, example 0.0.0.0:8080")
 var webroot = flag.String("webroot", "./", "root of web resource directory")
+var local = flag.Bool("local", false, "using local file store instead of S3")
 var auth = flag.Bool("auth", true, "use OAuth for login")
 
 func init() {
@@ -75,11 +76,11 @@ func main() {
 	vidSubHandler := handler.VideoSub(db, *webroot)
 	missingHandler := handler.Missing(*webroot)
 	adminHandler := handler.Admin(db, *webroot)
-	comicUploadHandler := handler.ComicUpload(db, *webroot)
-	comicHandler := handler.Comics(db, *webroot)
+	comicUploadHandler := handler.ComicUpload(db, *webroot, *local)
+	comicHandler := handler.Comics(db, *webroot, *local)
 	comicMissingHandler := handler.ComicsMissing(db, *webroot)
 	comicTotalsHandler := handler.ComicsTotals(db, *webroot)
-	comicViewHandler := handler.ComicView(db, *webroot)
+	comicViewHandler := handler.ComicView(db, *webroot, *local)
 
 	r := mux.NewRouter()
 	r.Handle("/", homeHandler)

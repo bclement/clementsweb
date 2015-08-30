@@ -17,7 +17,7 @@
 								<li>
                                     <!-- TODO link/sizing -->
                                     <img width="400" 
-                                        src="/static/comics/{{$comic.CoverPath}}"/>
+                                        src="{{$.ImgPrefix}}/covers/{{$comic.CoverPath}}"/>
                                     <div style="width:290px; max-width:290px; 
                                         word-wrap:break-word; float:right;margin: 10px">
                                     <p>

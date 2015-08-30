@@ -198,17 +198,52 @@ type ComicHandler struct {
 	seriesTemplate *template.Template
 	ds             boltq.DataStore
 	webroot        string
+	imgPrefix      string
 }
 
 /*
 Comics creates a new ComicHandler
 */
-func Comics(db *bolt.DB, webroot string) *Wrapper {
+func Comics(db *bolt.DB, webroot string, local bool) *Wrapper {
 	list := CreateTemplate(webroot, "base.html", "comiclist.template")
 	top := CreateTemplate(webroot, "base.html", "comictop.template")
 	series := CreateTemplate(webroot, "base.html", "comicseries.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicHandler{list, top, series, ds, webroot}}
+	var imgPrefix string
+	if local {
+		imgPrefix = getLocalImgPrefix(ds)
+	} else {
+		var err error
+		imgPrefix, err = getS3ImgPrefix(ds)
+		if err != nil {
+			log.Printf("Problem getting img prefix: %v\n", err)
+		}
+	}
+	return &Wrapper{ComicHandler{list, top, series, ds, webroot, imgPrefix}}
+}
+
+func getLocalImgPrefix(ds boltq.DataStore) string {
+	/* TODO this should be configurable */
+	return "/static/comics"
+}
+
+func getS3ImgPrefix(ds boltq.DataStore) (prefix string, err error) {
+	ds.View(func(tx *bolt.Tx) error {
+		/* TODO this should go in a constant */
+		b := tx.Bucket([]byte("aws.config"))
+		if b != nil {
+			bytes := b.Get([]byte("imgPrefix"))
+			if bytes != nil {
+				prefix = string(bytes)
+			}
+		}
+		return nil
+	})
+	if prefix == "" {
+		err = fmt.Errorf("Unable to find imgPrefix in aws config")
+	}
+
+	return
 }
 
 /*
@@ -251,6 +286,7 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 		sort.Sort(ByRelease{sl})
 		titles := packageTitles(sl)
 		pagedata["Titles"] = titles
+		pagedata["ImgPrefix"] = h.imgPrefix
 		templateErr = template.Execute(w, pagedata)
 	} else {
 		e = fmt.Errorf("Unable to get comics from db: %v", e)

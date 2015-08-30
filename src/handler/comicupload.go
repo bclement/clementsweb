@@ -7,14 +7,10 @@ import (
 	"fmt"
 	"hash/fnv"
 	"html/template"
-	"io"
 	"log"
 	"math/big"
-	"mime/multipart"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -340,18 +336,29 @@ type ComicUploadHandler struct {
 	uploadTemplate  *template.Template
 	ds              boltq.DataStore
 	webroot         string
+	storer          FileStorer
 }
 
 /*
 ComicUpload creates a new ComicUploadHandler
 */
-func ComicUpload(db *bolt.DB, webroot string) *Wrapper {
+func ComicUpload(db *bolt.DB, webroot string, local bool) *Wrapper {
 
 	block := CreateTemplate(webroot, "base.html", "block.template")
 	login := CreateTemplate(webroot, "base.html", "login.template")
 	upload := CreateTemplate(webroot, "base.html", "comicupload.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicUploadHandler{login, block, upload, ds, webroot}}
+	var storer FileStorer
+	if local {
+		storer = NewLocalStore(webroot)
+	} else {
+		var err error
+		storer, err = NewS3Store(ds)
+		if err != nil {
+			log.Printf("Problem creating S3 file store: %v\n", err)
+		}
+	}
+	return &Wrapper{ComicUploadHandler{login, block, upload, ds, webroot, storer}}
 }
 
 var _stopWords map[string]bool
@@ -397,7 +404,7 @@ func (h ComicUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 		h.ds.DB, data, "ComicUploader", "")
 	if authorized && templateErr == nil {
 		if r.Method == "POST" {
-			status := processUpload(h.ds, h.webroot, r, data)
+			status := processUpload(h.ds, h.storer, r, data)
 			data["Status"] = status
 		}
 		templateErr = h.uploadTemplate.Execute(w, data)
@@ -413,7 +420,7 @@ func (h ComicUploadHandler) Handle(w http.ResponseWriter, r *http.Request,
 /*
 process reads the new comic data from the request and stores it in the db
 */
-func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data PageData) string {
+func processUpload(ds boltq.DataStore, storer FileStorer, r *http.Request, data PageData) string {
 	var status string
 	var comic Comic
 	var err error
@@ -445,7 +452,7 @@ func processUpload(ds boltq.DataStore, webroot string, r *http.Request, data Pag
 	comic.Colors, status = processString(r, "colors", status, data)
 	comic.Letters, status = processString(r, "letters", status, data)
 	comic.Notes, status = processString(r, "notes", status, data)
-	comic.CoverPath, status = processCover(webroot, r, &comic)
+	comic.CoverPath, status = processCover(r, &comic, storer)
 	if status == "" {
 		var book Book
 		/* TODO validate grade value? */
@@ -567,66 +574,6 @@ func normalizeIndexTokens(tx *bolt.Tx, str string) (tokens [][]byte) {
 		}
 	}
 	return
-}
-
-/*
-processCover reads in the cover image from the request and stores in on the file system
-*/
-func processCover(webroot string, r *http.Request, comic *Comic) (coverPath, status string) {
-	formFile, headers, err := r.FormFile("cover")
-	if err != nil {
-		if err == http.ErrMissingFile {
-			if comic.CoverPath == "" {
-				status = "Missing cover file"
-			} else {
-				coverPath = comic.CoverPath
-			}
-		} else {
-			status = fmt.Sprintf("Unable to save cover: %v", err.Error())
-		}
-		return
-	}
-	dotIndex := strings.LastIndex(headers.Filename, ".")
-	ext := headers.Filename[dotIndex:]
-	dirName := comic.SeriesKey()
-	issuePart := comic.IssueKey()
-	coverPart := comic.CoverKey()
-	fileName := fmt.Sprintf("%v_%v%v", issuePart, coverPart, ext)
-	dirPath := filepath.Join("static", "comics", dirName)
-	absPath := filepath.Join(webroot, dirPath)
-	err = os.MkdirAll(absPath, 0700)
-	if err == nil {
-		cfilePath := filepath.Join(absPath, fileName)
-		err = overwriteFile(cfilePath, formFile)
-		coverPath = filepath.Join(dirName, fileName)
-	}
-	if err != nil {
-		status = err.Error()
-	}
-	return
-}
-
-/*
-overwriteFile writes the file to the path on the filesystem
-*/
-func overwriteFile(path string, src multipart.File) error {
-
-	var err error
-	var target *os.File
-	if src != nil {
-		target, err = os.Create(path)
-		if err == nil {
-			defer target.Close()
-			_, err = io.Copy(target, src)
-			if err == nil {
-				err = target.Sync()
-			}
-		}
-	} else {
-		err = fmt.Errorf("Missing data for file: %v", path)
-	}
-
-	return err
 }
 
 /*

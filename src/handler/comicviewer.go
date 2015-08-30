@@ -18,15 +18,33 @@ type ComicViewHandler struct {
 	viewTemplate *template.Template
 	ds           boltq.DataStore
 	webroot      string
+	imgPrefix    string
+	storer       FileStorer
 }
 
 /*
 Comics creates a new ComicViewHandler
 */
-func ComicView(db *bolt.DB, webroot string) *Wrapper {
+func ComicView(db *bolt.DB, webroot string, local bool) *Wrapper {
 	view := CreateTemplate(webroot, "base.html", "comicview.template")
 	ds := boltq.DataStore{db}
-	return &Wrapper{ComicViewHandler{view, ds, webroot}}
+	var imgPrefix string
+	var storer FileStorer
+	if local {
+		imgPrefix = getLocalImgPrefix(ds)
+		storer = NewLocalStore(webroot)
+	} else {
+		var err error
+		imgPrefix, err = getS3ImgPrefix(ds)
+		if err != nil {
+			log.Printf("Problem getting img prefix%v\n", err)
+		}
+		storer, err = NewS3Store(ds)
+		if err != nil {
+			log.Printf("Problem creating S3 store%v\n", err)
+		}
+	}
+	return &Wrapper{ComicViewHandler{view, ds, webroot, imgPrefix, storer}}
 }
 
 /*
@@ -47,7 +65,7 @@ func (h ComicViewHandler) Handle(w http.ResponseWriter, r *http.Request,
 	if HasRole(h.ds.DB, login.Email, "ComicUploader") {
 		pagedata["Uploader"] = true
 		if r.Method == "POST" {
-			status = processUpload(h.ds, h.webroot, r, pagedata)
+			status = processUpload(h.ds, h.storer, r, pagedata)
 		}
 	}
 
@@ -84,6 +102,7 @@ func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
 			seriesKey, issueKey, coverKey)
 	}
 
+	pagedata["ImgPrefix"] = h.imgPrefix
 	pagedata["Comic"] = &existing
 	pagedata["Status"] = status
 	templateErr = h.viewTemplate.Execute(w, pagedata)
