@@ -9,7 +9,8 @@
 <form action=".">
   <input type="search" name="q" id="q"
     {{if .query}}value="{{.query}}"{{end}} />
-  <input type="submit" value="search"/>
+  <input type="submit" name="qtype" value="match any"/>
+  <input type="submit" name="qtype" value="match all"/>
 </form>
                     {{range $title := .Titles}}
 						<section>

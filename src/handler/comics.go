@@ -30,12 +30,13 @@ type IndexQuery struct {
 	collection []byte
 	index      []byte
 	values     [][]byte
+	matchAll   bool
 }
 
 /*
 newIndexQuery creates a new string search from the fields of the qstring
 */
-func newIndexQuery(ds boltq.DataStore, qstring string) IndexQuery {
+func newIndexQuery(ds boltq.DataStore, qstring string, matchAll bool) IndexQuery {
 	var tokens [][]byte
 	ds.View(func(tx *bolt.Tx) error {
 		tokens = normalizeIndexTokens(tx, qstring)
@@ -43,14 +44,18 @@ func newIndexQuery(ds boltq.DataStore, qstring string) IndexQuery {
 	})
 	col := []byte(COMIC_COL)
 	idx := []byte(COMIC_INDEX)
-	return IndexQuery{col, idx, tokens}
+	return IndexQuery{col, idx, tokens, matchAll}
 }
 
 /*
 see Query interface
 */
 func (iq IndexQuery) run(tx *bolt.Tx) ([][]byte, error) {
-	return boltq.TxIndexQuery(tx, iq.collection, iq.index, iq.values...)
+	if iq.matchAll {
+		return boltq.TxIndexMatchAll(tx, iq.collection, iq.index, iq.values...)
+	} else {
+		return boltq.TxIndexMatchAny(tx, iq.collection, iq.index, iq.values...)
+	}
 }
 
 /*
@@ -260,6 +265,7 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 	series, seriesPresent := vars["series"]
 	issueStr, issuePresent := vars["issue"]
 	qstring := r.FormValue("q")
+	qtype := r.FormValue("qtype")
 	topSeries := r.FormValue("s")
 	if seriesPresent {
 		template = h.seriesTemplate
@@ -269,8 +275,12 @@ func (h ComicHandler) Handle(w http.ResponseWriter, r *http.Request,
 		}
 		q = QueryWrapper{boltq.NewQuery([]byte("comics"), terms...)}
 	} else if qstring != "" {
+		matchAll := true
+		if qtype == "match any" {
+			matchAll = false
+		}
 		template = h.listTemplate
-		q = newIndexQuery(h.ds, qstring)
+		q = newIndexQuery(h.ds, qstring, matchAll)
 		pagedata["query"] = qstring
 	} else if topSeries != "" {
 		template = h.listTemplate

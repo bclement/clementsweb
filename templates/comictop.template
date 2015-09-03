@@ -7,9 +7,10 @@
 			<section id="main" class="wrapper">
 				<div class="container">
 <form action=".">
-  <input type="search" name="q" id="q"
+  <input type="search" name="q" id="q" placeholder="Search"
     {{if .query}}value="{{.query}}"{{end}} />
-  <input type="submit" value="search"/>
+  <input type="submit" name="qtype" value="match any"/>
+  <input type="submit" name="qtype" value="match all"/>
 </form>
                     <ul class="flex-container wrap">
                     {{range $title := .Titles }}
