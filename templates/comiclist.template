@@ -42,7 +42,7 @@
                                             </td>
 											<td>{{$comic.Notes}}</td>
                                             {{if $comic.Best}}
-											<td>{{$comic.Best.String}}</td>
+											<td>{{$comic.Best}}</td>
                                             {{else}}
 											<td style="color:red">missing</td>
                                             {{end}}

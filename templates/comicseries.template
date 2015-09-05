@@ -39,7 +39,11 @@
                                         Colors: {{$comic.Colors}}<br/>
                                         Letters: {{$comic.Letters}}<br/>
                                         Notes: {{$comic.Notes}}<br/>
-                                  Status: {{if $comic.Best}}{{$comic.Best}}{{else}}missing{{end}}
+                                  Status: {{if $comic.Best}}
+                                            {{$comic.Best}}
+                                          {{else}}
+                                            <span style="color:red">missing</span>
+                                          {{end}}
                                     </p>
                                     </div>
 								</li>

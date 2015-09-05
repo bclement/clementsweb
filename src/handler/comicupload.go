@@ -51,7 +51,25 @@ const (
 	NEAR_MINT = "NM"
 )
 
-var gradeRank = map[string]int{POOR: 0, FAIR: 1, GOOD: 2, VERY_GOOD: 3, FINE: 4, VERY_FINE: 5, NEAR_MINT: 6}
+var gradeName = map[string]string{
+	POOR:      "poor",
+	FAIR:      "fair",
+	GOOD:      "good",
+	VERY_GOOD: "very good",
+	FINE:      "fine",
+	VERY_FINE: "very fine",
+	NEAR_MINT: "near mint",
+}
+
+var gradeRank = map[string]int{
+	POOR:      0,
+	FAIR:      1,
+	GOOD:      2,
+	VERY_GOOD: 3,
+	FINE:      4,
+	VERY_FINE: 5,
+	NEAR_MINT: 6,
+}
 
 var FRAC_NUMS = map[rune]float32{
 	'¼': float32(1 / 4),
@@ -98,11 +116,15 @@ type Book struct {
 }
 
 func (b *Book) String() string {
-	return b.Grade
+	return b.FormatGrade()
 }
 
 func (b *Book) FormatValue() string {
 	return FormatCurrency(b.Value)
+}
+
+func (b *Book) FormatGrade() string {
+	return gradeName[b.Grade]
 }
 
 /*
