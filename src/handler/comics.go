@@ -318,15 +318,16 @@ func packageTitles(sl SeriesList) (titles []ComicTitle) {
 		list := sl.Map[seriesId]
 		/* ensure that issues are in order */
 		sort.Sort(list)
-		/* TODO this is only needed because of 1997 star wars,
+		/* TODO this is only needed because of 1998 star wars,
 		it should be optimized for common case */
-		firstTitle := list[0].Title
+		runningTitle := list[0].Title
 		path := list[0].SeriesPath()
 		currTitle := ComicTitle{list[0].Publisher, seriesId, path, nil}
 		for i := range list {
-			if firstTitle != list[i].Title {
+			if runningTitle != list[i].Title {
 				titles = append(titles, currTitle)
 				currTitle = ComicTitle{list[i].Publisher, list[i].Title, seriesId, nil}
+				runningTitle = list[i].Title
 			}
 			currTitle.Comics = append(currTitle.Comics, list[i])
 		}
