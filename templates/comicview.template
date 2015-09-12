@@ -54,6 +54,11 @@
 							</div>
 						</section>
                             {{if .Uploader}}
+                        <section>
+                            <form method="post" action="{{.Comic.CoverId}}" enctype="multipart/form-data">
+							    <input type="submit" name="action" value="clear books" class="special" />
+                            </form>
+                        </section>
 						<section>
 						    <h3>Comic Update</h3>
                             {{ if .Status }}

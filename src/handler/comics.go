@@ -326,7 +326,7 @@ func packageTitles(sl SeriesList) (titles []ComicTitle) {
 		for i := range list {
 			if runningTitle != list[i].Title {
 				titles = append(titles, currTitle)
-				currTitle = ComicTitle{list[i].Publisher, list[i].Title, seriesId, nil}
+				currTitle = ComicTitle{list[i].Publisher, list[i].Title, path, nil}
 				runningTitle = list[i].Title
 			}
 			currTitle.Comics = append(currTitle.Comics, list[i])

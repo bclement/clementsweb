@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"log"
@@ -65,19 +66,61 @@ func (h ComicViewHandler) Handle(w http.ResponseWriter, r *http.Request,
 	if HasRole(h.ds.DB, login.Email, "ComicUploader") {
 		pagedata["Uploader"] = true
 		if r.Method == "POST" {
-			status = processUpload(h.ds, h.storer, r, pagedata)
+			action := r.FormValue("action")
+			if action == "delete comic" {
+				status = processDelete(h.ds, r)
+			} else if action == "clear books" {
+				status = processClear(h.ds, r)
+			} else {
+				status = processUpload(h.ds, h.storer, r, pagedata)
+			}
 		}
 	}
 
 	return h.handleView(w, r, pagedata, status)
 }
 
-func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
-	pagedata PageData, status string) *AppError {
+func processClear(ds boltq.DataStore, r *http.Request) string {
+	key, status := getComicVarKey(r)
+	existing, found, lookupErr := getComic(ds, key)
+	if lookupErr != nil {
+		status = fmt.Sprintf("Can't lookup comic: %v", lookupErr.Error())
+	} else if !found {
+		keyStr := formatKeys(key)
+		status = fmt.Sprintf("Unable to find comic: %v", keyStr)
+	} else {
+		existing.Books = nil
+		err := storeComic(ds, key, &existing)
+		if err != nil {
+			status = fmt.Sprintf("Unable to save comic: %v", err.Error())
+		} else {
+			totalsErr := UpdateComicTotals(ds, existing.SeriesId)
+			if totalsErr != nil {
+				log.Printf("Problem updating comic totals %v", totalsErr)
+			}
+		}
+	}
+	return status
+}
 
-	var err *AppError
-	var templateErr error
+func processDelete(ds boltq.DataStore, r *http.Request) string {
+	key, status := getComicVarKey(r)
 
+	if status == "" {
+		/* TODO update missing/totals index, delete cover file */
+		err := ds.Update(func(tx *bolt.Tx) error {
+			return boltq.TxDelete(tx, []byte(COMIC_COL), key...)
+		})
+		if err != nil {
+			keyStr := formatKeys(key)
+			status = fmt.Sprintf("Problem deleting comic with keys %v: %v", keyStr, err)
+		}
+	}
+
+	return status
+}
+
+func getComicVarKey(r *http.Request) (key [][]byte, status string) {
 	vars := mux.Vars(r)
 	seriesKey, found := vars["series"]
 	if !found {
@@ -92,14 +135,33 @@ func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
 		status = "Missing cover argument"
 	}
 
-	key := [][]byte{[]byte(seriesKey), []byte(issueKey), []byte(coverKey)}
+	key = [][]byte{[]byte(seriesKey), []byte(issueKey), []byte(coverKey)}
+	return
+}
+
+func formatKeys(keys [][]byte) string {
+	var rval bytes.Buffer
+	for i := range keys {
+		rval.Write(keys[i])
+		rval.WriteRune(' ')
+	}
+	return rval.String()
+}
+
+func (h ComicViewHandler) handleView(w http.ResponseWriter, r *http.Request,
+	pagedata PageData, status string) *AppError {
+
+	var err *AppError
+	var templateErr error
+
+	key, status := getComicVarKey(r)
 	existing, found, lookupErr := getComic(h.ds, key)
 	if lookupErr != nil {
 		status = fmt.Sprintf("Can't lookup comic: %v", lookupErr.Error())
 		/* TODO keep going? */
 	} else if !found {
-		status = fmt.Sprintf("Unable to find comic: %v %v %v",
-			seriesKey, issueKey, coverKey)
+		keyStr := formatKeys(key)
+		status = fmt.Sprintf("Unable to find comic: %v", keyStr)
 	}
 
 	pagedata["ImgPrefix"] = h.imgPrefix
