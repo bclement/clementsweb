@@ -179,6 +179,18 @@ func (comic *Comic) FormatIssue() string {
 	return rval
 }
 
+func (comic *Comic) FormatStoryDate() string {
+	var era string
+	year := comic.ChronOffset
+	if year < 0 {
+		year *= -1
+		era = "BBY"
+	} else {
+		era = "ABY"
+	}
+	return fmt.Sprintf("%v %v", year, era)
+}
+
 func (comic *Comic) SeriesKey() string {
 	return SanitizeKey(comic.SeriesId)
 }

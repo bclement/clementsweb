@@ -31,7 +31,7 @@
                                         </a>
                                         Cover Price: {{$comic.FormatCoverPrice}}<br/>
                                         <!-- TODO chron formatting -->
-                                        Story Date: {{$comic.ChronOffset}}<br/>
+                                        Story Date: {{$comic.FormatStoryDate}}<br/>
                                         Author: {{$comic.Author}}<br/>
                                         Cover Artist: {{$comic.CoverArtist}}<br/>
                                         Pencils: {{$comic.Pencils}}<br/>

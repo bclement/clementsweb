@@ -24,7 +24,7 @@
                                         Cover ID: {{.Comic.CoverId}}<br/>
                                         Cover Price: {{.Comic.FormatCoverPrice}}<br/>
                                         <!-- TODO chron formatting -->
-                                        Story Date: {{.Comic.ChronOffset}}<br/>
+                                        Story Date: {{.Comic.FormatStoryDate}}<br/>
                                         Author: {{.Comic.Author}}<br/>
                                         Cover Artist: {{.Comic.CoverArtist}}<br/>
                                         Pencils: {{.Comic.Pencils}}<br/>
