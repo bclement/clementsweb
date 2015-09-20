@@ -171,10 +171,24 @@ func (comic *Comic) FormatCoverPrice() string {
 }
 
 func (comic *Comic) FormatIssue() string {
+	return TrimIssue(comic.Issue, false)
+}
+
+func TrimIssue(issue string, trimFraction bool) string {
 	/* ints are padded to sort lexigraphically */
-	rval := comic.Issue
+	rval := issue
 	for len(rval) > 1 && rval[0] == '0' {
 		rval = rval[1:]
+		if !trimFraction {
+			/* this is for legacy #0½ */
+			ch, _ := utf8.DecodeRuneInString(rval)
+			_, found := FRAC_NUMS[ch]
+			if found {
+				/* this is unlikely so don't optimize for it */
+				rval = "0" + rval
+				break
+			}
+		}
 	}
 	return rval
 }
@@ -322,6 +336,7 @@ func parseFloat(s string) (value float32, success bool) {
 }
 
 func stringFractionToFloat(s string) (value float32, success bool) {
+	s = TrimIssue(s, true)
 	/* unicode fraction? */
 	ch, _ := utf8.DecodeRuneInString(s)
 	v, found := FRAC_NUMS[ch]
