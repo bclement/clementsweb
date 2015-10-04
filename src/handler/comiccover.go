@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -15,13 +18,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bclement/boltq"
 	"github.com/boltdb/bolt"
+	"github.com/nfnt/resize"
 )
 
 type FileStorer interface {
 	/*
 	   Store persists the file using the supplied path
 	*/
-	Store(dirName, fileName string, file multipart.File, headers *multipart.FileHeader) error
+	Store(contentType, dirName, fileName string, file io.ReadSeeker, size int64) error
 }
 
 /*
@@ -38,8 +42,8 @@ func NewLocalStore(webroot string) LocalStore {
 /*
 see FIleStorer interface
 */
-func (ls LocalStore) Store(dirName, fileName string,
-	file multipart.File, headers *multipart.FileHeader) (err error) {
+func (ls LocalStore) Store(contentType, dirName, fileName string,
+	file io.ReadSeeker, size int64) (err error) {
 
 	dirPath := filepath.Join("static", "comics", dirName)
 	absPath := filepath.Join(ls.webroot, dirPath)
@@ -55,17 +59,20 @@ type S3Store struct {
 	client   *s3.S3
 	bucket   string
 	coverDir string
+	thumbDir string
 }
 
 func NewS3Store(ds boltq.DataStore) (s S3Store, err error) {
 	var awsBucket string
 	var credsFile string
 	var coverDir string
+	var thumbDir string
 	err = ds.View(func(tx *bolt.Tx) (e error) {
 		b := tx.Bucket([]byte("aws.config"))
 		if b != nil {
 			awsBucket = getStringFromBucket(b, "bucket")
 			coverDir = getStringFromBucket(b, "coverDir")
+			thumbDir = getStringFromBucket(b, "thumbDir")
 			credsFile = getStringFromBucket(b, "credsFile")
 		} else {
 			e = fmt.Errorf("Unable to find config bucket: aws.config")
@@ -73,7 +80,7 @@ func NewS3Store(ds boltq.DataStore) (s S3Store, err error) {
 		return
 	})
 	if err == nil {
-		if awsBucket == "" || credsFile == "" || coverDir == "" {
+		if awsBucket == "" || credsFile == "" || coverDir == "" || thumbDir == "" {
 			err = fmt.Errorf("Unable to find all config params in db")
 		} else {
 			creds := credentials.NewSharedCredentials(credsFile, "default")
@@ -87,7 +94,7 @@ func NewS3Store(ds boltq.DataStore) (s S3Store, err error) {
 					LogLevel:         aws.LogLevel(0),
 				}
 				client := s3.New(config)
-				s = S3Store{client, awsBucket, coverDir}
+				s = S3Store{client, awsBucket, coverDir, thumbDir}
 			}
 		}
 	}
@@ -103,30 +110,25 @@ func getStringFromBucket(b *bolt.Bucket, key string) (value string) {
 }
 
 /*
-see FIleStorer interface
+see FileStorer interface
 */
-func (s S3Store) Store(dirName, fileName string,
-	f multipart.File, h *multipart.FileHeader) (err error) {
+func (s S3Store) Store(contentType, dirName, fileName string,
+	file io.ReadSeeker, size int64) (err error) {
 
-	size, err := getFileSize(f, h)
-
-	if err == nil {
-		key := filepath.Join(s.coverDir, dirName, fileName)
-		params := &s3.PutObjectInput{
-			Bucket:        aws.String(s.bucket), // Required
-			Key:           aws.String(key),      // Required
-			ACL:           aws.String("public-read"),
-			Body:          f,
-			ContentLength: aws.Int64(size),
-		}
-
-		contentType := getHeaderValue(h, "Content-Type")
-		if contentType != "" {
-			params.ContentType = aws.String(contentType)
-		}
-
-		_, err = s.client.PutObject(params)
+	key := filepath.Join(dirName, fileName)
+	params := &s3.PutObjectInput{
+		Bucket:        aws.String(s.bucket), // Required
+		Key:           aws.String(key),      // Required
+		ACL:           aws.String("public-read"),
+		Body:          file,
+		ContentLength: aws.Int64(size),
 	}
+
+	if contentType != "" {
+		params.ContentType = aws.String(contentType)
+	}
+
+	_, err = s.client.PutObject(params)
 	return
 }
 
@@ -172,17 +174,54 @@ func processCover(r *http.Request, comic *Comic, storer FileStorer) (coverPath, 
 	coverPart := comic.CoverKey()
 	fileName := fmt.Sprintf("%v_%v%v", issuePart, coverPart, ext)
 	coverPath = filepath.Join(dirName, fileName)
-	err = storer.Store(dirName, fileName, formFile, headers)
+	fullSizePath := filepath.Join("covers", dirName)
+	thumbPath := filepath.Join("thumbs", dirName)
+	contentType := getHeaderValue(headers, "Content-Type")
+	size, err := getFileSize(formFile, headers)
+	if err == nil {
+		/* store original size */
+		err = storer.Store(contentType, fullSizePath, fileName, formFile, size)
+	}
+	if err == nil {
+		/* rewind reader to beginning */
+		_, err = formFile.Seek(0, 0)
+	}
+	var thumb bytes.Buffer
+	if err == nil {
+		/* resize to make thumbnail */
+		contentType, err = makeThumb(formFile, &thumb)
+		size = int64(thumb.Len())
+	}
+	if err == nil {
+		/* store thumbnail */
+		r := bytes.NewReader(thumb.Bytes())
+		err = storer.Store(contentType, thumbPath, fileName, r, size)
+	}
 	if err != nil {
 		status = err.Error()
 	}
 	return
 }
 
+func makeThumb(r io.Reader, w io.Writer) (contentType string, err error) {
+	var img image.Image
+	var thumbImg image.Image
+	img, _, err = image.Decode(r)
+	if err == nil {
+		/* TODO max sizes should come from config */
+		thumbImg = resize.Thumbnail(250, 1000, img, resize.Lanczos3)
+		/* TODO thumb format should come from config */
+		err = jpeg.Encode(w, thumbImg, nil)
+		contentType = "image/jpg"
+	}
+
+	return
+}
+
 /*
 overwriteFile writes the file to the path on the filesystem
 */
-func overwriteFile(path string, src multipart.File) error {
+func overwriteFile(path string, src io.Reader) error {
 
 	var err error
 	var target *os.File

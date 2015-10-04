@@ -16,6 +16,7 @@
 						<section>
                             <a href="{{$title.Path}}">
 						    <h3>{{$title.Publisher}} {{$title.DisplayName}}</h3>
+                            <h4>Cover Gallery</h4>
                             </a>
 							<div class="table-wrapper">
 								<table class="alt">
@@ -31,7 +32,9 @@
 									<tbody>
                                         {{range $comic:= $title.Comics}}
 										<tr>
-											<td>{{$comic.Subtitle}}</td>
+											<td>
+                                            {{$comic.Subtitle}}
+                                            </td>
                                             <td>
                                             <a href="{{$comic.IssuePath}}">
 											{{$comic.FormatIssue}}</a>

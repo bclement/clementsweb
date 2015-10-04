@@ -19,7 +19,7 @@
                             <hr/>
                             <a href="/comics/?s={{$comic.SeriesKey}}">
                                     <img width="250" 
-                                        src="{{$.ImgPrefix}}/covers/{{$comic.CoverPath}}"/>
+                                        src="{{$.ImgPrefix}}/thumbs/{{$comic.CoverPath}}"/>
                                     <div style="width: 250px"><b>{{$comic.SeriesId}}</b></div>
                             </a>
                         </li>
